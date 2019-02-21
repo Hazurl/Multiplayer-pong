@@ -91,7 +91,7 @@ STATIC_LINK_FLAG := rcs
 
 # Include path
 # Must be use with -I
-INC_FLAG := -I $(INC_FOLDER)
+INC_FLAG := -I $(INC_FOLDER) -I ../engine/include
 
 #####
 ##### LIBRARY
@@ -99,15 +99,19 @@ INC_FLAG := -I $(INC_FOLDER)
 
 # Path to libaries if not in $PATH, for example (relative to the project folder): lib/
 # Must be use with -L
-LIBS_PATH := 
+LIBS_PATH := -L ../engine/build/static
 
 # For example: -lsfml-graphics
-LIBS := -lsfml-graphics -lsfml-window -lsfml-system
+LIBS := -lsfml-system -lsfml-network -lmulti-pong-engine
 
 # Library that require to be build
-LIB_TO_BUILD := 
+LIB_TO_BUILD := ../engine/build/static/libmulti-pong-engine.a
 
 # Create rules to build the libraries
+
+../engine/build/static/libmulti-pong-engine.a:
+	@$(call _special,BUILDING STATIC LIBRARY ($@)...)
+	@cd ../engine/ && make MAKEFLAGS="" | sed "s/^/\t/"
 
 ###############################################
 #                   PRIVATE                   #

@@ -38,7 +38,7 @@ BUILD_EXE_FOLDER := $(BUILD_FOLDER)/executable
 ##### GENERAL SETTINGS
 #####
 
-PROJECT_NAME := multi-pong-client
+PROJECT_NAME := multi-pong-engine
 CXX := g++
 SXX := ar
 
@@ -48,7 +48,7 @@ TARGET_STATIC := $(BUILD_STATIC_FOLDER)/lib$(PROJECT_NAME).a
 TARGET_EXE := $(BUILD_EXE_FOLDER)/$(PROJECT_NAME)
 
 # Target to build when `make` or `make all` is typed
-TARGET_ALL := $(TARGET_EXE)
+TARGET_ALL := $(TARGET_STATIC)
 
 #####
 ##### FILES SETTINGS
@@ -91,7 +91,7 @@ STATIC_LINK_FLAG := rcs
 
 # Include path
 # Must be use with -I
-INC_FLAG := -I $(INC_FOLDER) -I ../engine/include
+INC_FLAG := -I $(INC_FOLDER)
 
 #####
 ##### LIBRARY
@@ -99,19 +99,15 @@ INC_FLAG := -I $(INC_FOLDER) -I ../engine/include
 
 # Path to libaries if not in $PATH, for example (relative to the project folder): lib/
 # Must be use with -L
-LIBS_PATH := -L ../engine/build/static
+LIBS_PATH := 
 
 # For example: -lsfml-graphics
-LIBS := -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network -lmulti-pong-engine
+LIBS := 
 
 # Library that require to be build
-LIB_TO_BUILD := ../engine/build/static/libmulti-pong-engine.a
+LIB_TO_BUILD := 
 
 # Create rules to build the libraries
-
-../engine/build/static/libmulti-pong-engine.a:
-	@$(call _special,BUILDING STATIC LIBRARY ($@)...)
-	@cd ../engine/ && make MAKEFLAGS="" | sed "s/^/\t/"
 
 ###############################################
 #                   PRIVATE                   #
