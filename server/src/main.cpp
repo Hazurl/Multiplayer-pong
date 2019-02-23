@@ -5,165 +5,176 @@
 #include <vector>
 #include <mutex>
 #include <memory>
+#include <functional>
 #include <atomic>
 
 #include <multipong/Game.hpp>
 
 std::mutex cout_mutex;
 
-void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::TcpSocket>>& clients, std::atomic_bool& stop) {
+float        const ball_radius    { 8 };
+float        const pad_height     { 80 };
+float        const pad_padding    { 12 };
+float        const pad_max_speed  { 200 };
+sf::Vector2f const boundaries     { 800, 600 };
+sf::Vector2f const ball_boundaries{ boundaries.x - ball_radius, boundaries.y - ball_radius };
+float        const pad_boundary   { boundaries.y - pad_height };
+
+struct Game {
+    pong::Input input_left;
+    pong::Input input_right;
+
+    pong::Ball ball;
+    pong::Pad pad_left;
+    pong::Pad pad_right;
+
     sf::Clock clock;
-    sf::Clock c;
 
-    sf::Vector2f const boundaries{ 800, 600 };
+    Game() 
+        : input_left{ pong::Input::Idle }
+        , input_right{ pong::Input::Idle }
+        , ball{ ball_boundaries / 2.f, { 300, 300 }}
+        , pad_left{ pad_boundary / 2.f, 0 }
+        , pad_right{ pad_boundary / 2.f, 0 }
+    {}
 
-    float const ball_radius{ 8 };
-    sf::Vector2f const ball_boundaries{ boundaries.x - ball_radius, boundaries.y - ball_radius };
+    void update() {
+        float dt = clock.restart().asSeconds();
+        ball.update(dt, boundaries);
+        pad_left.update(dt, input_left, pad_max_speed, pad_boundary);
+        pad_right.update(dt, input_right, pad_max_speed, pad_boundary);
+    }
+};
 
-    float const pad_height{ 80 };
-    float const pad_boundary{ boundaries.y - pad_height };
-
-    pong::Ball ball {
-        ball_boundaries / 2.f, // position
-        { 300, 300 }  // speed
-    };
-
-    float const pad_max_speed{ 200 };
-    auto input = pong::Input::Idle;
-    pong::Pad pad {
-        pad_boundary / 2.f, // position
-        0 // speed
-    };
-
-    float refresh_rate = 0.4;
+struct PeriodicPacket {
+    sf::TcpSocket* socket;
+    std::function<sf::Packet()> packet_maker;
     sf::Packet packet;
 
-    while(!stop) {/*
-        std::lock_guard lk{ clients_mutex };
-        sf::SocketSelector selector;
-        {
-            unsigned id{ 0 };
-            for(auto& client : clients) {
-                if (client->getRemoteAddress() == sf::IpAddress::None) {
-                    std::lock_guard cout_lk{ cout_mutex };
-                    std::cout << "a client doesn't have a connection " << id << '\n';
-                } else {
-                    //selector.add(*client);
-                    sf::Packet packet;
-                    client->setBlocking(false);
-                    switch (client->receive(packet)) {
-                        case sf::Socket::Done: {
-                            std::lock_guard cout_lk{ cout_mutex };
-                            std::cout << "receive something from " << id << '\n';
-                            break;
-                        }
-
-                        case sf::Socket::Disconnected: {
-                            std::lock_guard cout_lk{ cout_mutex };
-                            std::cout << "disconnection of " << id << '\n';
-                            break;
-                        }
-
-                        default: {
-
-                        }
-                    }
-                    client->setBlocking(true);
-                }
-
-                ++id;
-            }
-        }*/
-/*
-        if (selector.wait()) {
-            unsigned id{ 0 };
-            for(auto& client : clients) {
-                if (selector.isReady(*client)) {
-                    sf::Packet packet;
-                    switch (client->receive(packet)) {
-                        case sf::Socket::Done: {
-                            std::lock_guard cout_lk{ cout_mutex };
-                            std::cout << "receive something from " << id << '\n';
-                            break;
-                        }
-
-                        case sf::Socket::Disconnected: {
-                            std::lock_guard cout_lk{ cout_mutex };
-                            std::cout << "disconnection of " << id << '\n';
-                            break;
-                        }
-
-                        default: {}
-                    }
-                }
-
-                ++id;
-            }
-        }*/
-
-        auto dt = clock.restart().asSeconds();
-        static float d{ 0 };
-        d += dt;
-
-        if (d > 5) input = pong::Input::Up;
-        if (d > 6) input = pong::Input::Idle;
-        if (d > 7) input = pong::Input::Down;
-        if (d > 9) input = pong::Input::Idle;
-        if (d > 10) input = pong::Input::Up;
-        if (d > 11) { input = pong::Input::Idle; d = 2; }
-
-
-        ball.update(dt, ball_boundaries);
-        pad.update(dt, input, pad_max_speed, pad_boundary);
-
-        if (c.getElapsedTime().asSeconds() < refresh_rate) { continue; }
-        c.restart();
-        
-        {
-            std::lock_guard cout_lk{ cout_mutex };
-            std::cout << "UPDATE\n";
-        }
-
+    sf::Socket::Status send() {
         if (packet.getDataSize() == 0) {
-            packet << ball << pad;
+            packet = packet_maker();
         }
 
-        std::lock_guard lk{ clients_mutex };
+        auto status = socket->send(packet);
 
-        std::vector<std::size_t> disconnected;
+        if (status == sf::Socket::Done) {
+            packet.clear();
+        }
 
-        std::size_t id{ 0 };
-        for(auto& client : clients) {
-            switch (client->send(packet)) {
-                case sf::Socket::Disconnected: {
-                    disconnected.push_back(id);
-                    std::lock_guard cout_lk{ cout_mutex };
-                    std::cout << "disconnection of the client\n";
-                    break;
+        return status;
+    }
+};
+
+struct GameRoom {
+    Game game;
+
+    std::vector<std::unique_ptr<sf::TcpSocket>> spectators;
+
+    std::unique_ptr<sf::TcpSocket> player_left;
+    std::unique_ptr<sf::TcpSocket> player_right;
+
+    std::vector<PeriodicPacket> packets;
+};
+
+sf::Socket::Status receive_input(sf::TcpSocket& player, pong::Input& res, bool& got_input) {
+    sf::Packet packet;
+    auto status = player.receive(packet);
+
+    if (status == sf::Socket::Done) {
+        got_input = true;
+        packet >> res;
+    }
+
+    return status;
+}
+
+void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::TcpSocket>>& clients, std::atomic_bool& stop) {
+    sf::Clock refresh_clock;
+    float const refresh_rate = 5;
+    bool force_refresh{ false };
+
+    GameRoom room;
+
+    while(!stop) {
+        {
+            std::lock_guard lk{ clients_mutex };
+
+            for(auto& client : clients) {
+                if (!room.player_left) {
+                    room.player_left = std::move(client);
+                    room.packets.push_back(PeriodicPacket { room.player_left.get(), [game = &room.game] () {
+                        sf::Packet packet;
+                        packet << game->ball << game->pad_left << game->pad_right;
+                        return packet;
+                    }});
                 }
-
-                case sf::Socket::NotReady:
-                case sf::Socket::Error: {
-                    std::lock_guard cout_lk{ cout_mutex };
-                    std::cout << "Internal error\n";
-                    break;
+                else if (!room.player_right) {
+                    room.player_right = std::move(client);
+                    room.packets.push_back(PeriodicPacket { room.player_right.get(), [game = &room.game] () {
+                        sf::Packet packet;
+                        packet << game->ball << game->pad_left << game->pad_right;
+                        return packet;
+                    }});
                 }
-
-                case sf::Socket::Done: {
-                    packet.clear();
-                    break;
+                else {
+                    room.spectators.emplace_back(std::move(client));
+                    room.packets.push_back(PeriodicPacket { room.spectators.back().get(), [game = &room.game] () {
+                        sf::Packet packet;
+                        packet << game->ball << game->pad_left << game->pad_right;
+                        return packet;
+                    }});
                 }
-
-                default: {}
             }
 
-            ++id;
+            clients.clear();
         }
 
-        for(auto it = std::rbegin(disconnected); it != std::rend(disconnected); ++it) {
-            clients.erase(std::begin(clients) + *it);
+        if (room.player_left && room.player_right) {
+            if (receive_input(*room.player_left, room.game.input_left, force_refresh) == sf::Socket::Disconnected) {
+                std::cout << "disconnection of the left player\n";
+
+                for(std::size_t i{ 0 }; i < room.packets.size(); ++i) {
+                    auto& packet = room.packets[i];
+                    if (packet.socket == room.player_left.get()) {
+                        room.packets.erase(std::begin(room.packets) + i);
+                        break;
+                    }
+                }
+
+                room.player_left = nullptr;
+            }
+
+            if (receive_input(*room.player_right, room.game.input_right, force_refresh) == sf::Socket::Disconnected) {
+                std::cout << "disconnection of the right player\n";
+
+                for(std::size_t i{ 0 }; i < room.packets.size(); ++i) {
+                    auto& packet = room.packets[i];
+                    if (packet.socket == room.player_right.get()) {
+                        room.packets.erase(std::begin(room.packets) + i);
+                        break;
+                    }
+                }
+
+                room.player_right = nullptr;
+            }
+
+            room.game.update();
+        } else {
+            room.game.clock.restart();
         }
 
+        if (!force_refresh && refresh_clock.getElapsedTime().asSeconds() < refresh_rate) { continue; }
+        refresh_clock.restart();
+
+        force_refresh = false;
+
+        for(auto& packet : room.packets) {
+            if (packet.send() == sf::Socket::Disconnected) {
+                std::lock_guard cout_lk{ cout_mutex };
+                std::cout << "disconnection of the client : " << packet.socket << '\n';
+            }
+        }
     }
 }
 
@@ -185,6 +196,7 @@ int main() {
         }
 
         std::cout << "New client: " << client->getRemoteAddress() << ":" << client->getRemotePort() << std::endl;
+        client->setBlocking(false);
         
         std::lock_guard lk{ clients_mutex };
         clients.emplace_back(std::move(client));

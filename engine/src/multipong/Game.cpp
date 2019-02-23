@@ -41,6 +41,8 @@ void Pad::update(float dt, float board_height) {
 
     if (y > board_height) {
         y = board_height;
+    } else if (y < 0) {
+        y = 0;
     }
 }
 
