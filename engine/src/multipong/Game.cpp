@@ -7,28 +7,68 @@ float normalize_input(Input input) {
            input == Input::Up ? -1.f : 1.f;
 }
 
-void Ball::update(float dt, sf::Vector2f const& boundaries) {
+CollisionEvent Ball::update(float dt, float pad_left, float pad_right, sf::Vector2f const& boundaries, float padding, float pad_height, float pad_width, float ball_radius) {
     position += dt * speed;
+    auto event = CollisionEvent::None;
 
-    if (position.x > boundaries.x) {
-        auto tmp_dt = dt - (position.x - boundaries.x) / speed.x;
-        speed.x = -speed.x;
-        position.x = boundaries.x + speed.x * tmp_dt;
-    } else if (position.x < 0) {
-        auto tmp_dt = dt - -position.x / speed.x;
-        speed.x = -speed.x;
-        position.x = speed.x * tmp_dt;
+    // moving up
+    if (speed.y < 0) {
+        // bounding box, top
+        if (position.y < 0) {
+            speed.y = - speed.y;
+            position.y = - position.y;
+        }
+    }
+    // moving down 
+    else {
+        // bounding box, bottom
+        if (position.y + ball_radius > boundaries.y) {
+            speed.y = - speed.y;
+            position.y = 2 * boundaries.y - position.y - 2 * ball_radius;
+        }
     }
 
-    if (position.y > boundaries.y) {
-        auto tmp_dt = dt - (position.y - boundaries.y) / speed.y;
-        speed.y = -speed.y;
-        position.y = boundaries.y + speed.y * tmp_dt;
-    } else if (position.y < 0) {
-        auto tmp_dt = dt - -position.y / speed.y;
-        speed.y = -speed.y;
-        position.y = speed.y * tmp_dt;
+
+    // moving left
+    if (speed.x < 0) {
+        // bounding box, left
+        if (position.x < 0) {
+            //std::cout << "LEFT: " << speed.x << ", " << position.x;
+            speed.x = - speed.x;
+            position.x = - position.x;
+            event = CollisionEvent::LeftBoundary;
+            //std::cout << "\t|\t" << speed.x << ", " << position.x << '\n';
+        }
+
+        // in the left pad
+        if (position.x >= padding - pad_width && position.x <= padding &&
+            position.y >= pad_left && position.y <= pad_left + pad_height) {
+            
+            speed.x = - speed.x;
+            position.x = 2 * padding - position.x;
+        }
     }
+    // moving right
+    else {
+        // bounding box, right
+        if (position.x + ball_radius > boundaries.x) {
+            //std::cout << "RIGHT: " << speed.x << ", " << position.x;
+            speed.x = - speed.x;
+            position.x = 2 * boundaries.x - position.x - 2 * ball_radius;
+            event = CollisionEvent::RightBoundary;
+            //std::cout << "\t|\t" << speed.x << ", " << position.x << '\n';
+        }
+
+        // in the right pad
+        if (position.x + ball_radius >= boundaries.x - padding && position.x + ball_radius <= boundaries.x - padding + pad_width &&
+            position.y >= pad_right && position.y <= pad_right + pad_height) {
+            
+            speed.x = - speed.x;
+            position.x = 2 * (boundaries.x - padding) - position.x - 2 * ball_radius;
+        }
+    }
+
+    return event;
 }
 
 void Pad::update(float dt, Input input, float max_speed, float board_height) {

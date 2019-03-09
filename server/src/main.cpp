@@ -14,7 +14,8 @@ std::mutex cout_mutex;
 
 float        const ball_radius    { 8 };
 float        const pad_height     { 80 };
-float        const pad_padding    { 12 };
+float        const pad_width      { 12 };
+float        const pad_padding    { 40 };
 float        const pad_max_speed  { 200 };
 sf::Vector2f const boundaries     { 800, 600 };
 sf::Vector2f const ball_boundaries{ boundaries.x - ball_radius, boundaries.y - ball_radius };
@@ -33,14 +34,14 @@ struct Game {
     Game() 
         : input_left{ pong::Input::Idle }
         , input_right{ pong::Input::Idle }
-        , ball{ ball_boundaries / 2.f, { 300, 300 }}
+        , ball{ ball_boundaries / 2.f, { 100, 100 }}
         , pad_left{ pad_boundary / 2.f, 0 }
         , pad_right{ pad_boundary / 2.f, 0 }
     {}
 
     void update() {
         float dt = clock.restart().asSeconds();
-        ball.update(dt, boundaries);
+        ball.update(dt, pad_left.y, pad_right.y, boundaries, pad_padding, pad_height, pad_width, ball_radius);
         pad_left.update(dt, input_left, pad_max_speed, pad_boundary);
         pad_right.update(dt, input_right, pad_max_speed, pad_boundary);
     }
@@ -91,7 +92,7 @@ sf::Socket::Status receive_input(sf::TcpSocket& player, pong::Input& res, bool& 
 
 void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::TcpSocket>>& clients, std::atomic_bool& stop) {
     sf::Clock refresh_clock;
-    float const refresh_rate = 5;
+    float const refresh_rate = 0.05;
     bool force_refresh{ false };
 
     GameRoom room;

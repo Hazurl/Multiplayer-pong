@@ -9,14 +9,13 @@ enum class Input {
     Idle = 0, Up = 1, Down = 2
 };
 
-float normalize_input(Input input);
-
-struct Ball {
-    sf::Vector2f position;
-    sf::Vector2f speed;
-
-    void update(float dt, sf::Vector2f const& boundaries);
+enum class CollisionEvent {
+    LeftBoundary,
+    RightBoundary,
+    None
 };
+
+float normalize_input(Input input);
 
 struct Pad {
     float y;
@@ -24,6 +23,13 @@ struct Pad {
 
     void update(float dt, Input input, float max_speed, float board_height);
     void update(float dt, float board_height);
+};
+
+struct Ball {
+    sf::Vector2f position;
+    sf::Vector2f speed;
+
+    CollisionEvent update(float dt, float pad_left, float pad_right, sf::Vector2f const& boundaries, float padding, float pad_height, float pad_width, float ball_radius);
 };
 
 /* 
