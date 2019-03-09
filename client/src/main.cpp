@@ -149,10 +149,13 @@ int main(int argc, char** argv) {
     bool input_updated{ true };
     sf::Packet input_packet;
     
+    bool has_send_username{ false };
+    
     std::unique_ptr<sf::TcpSocket> socket;
     sf::Packet packet;
     std::future<std::unique_ptr<sf::TcpSocket>> future_socket;
-    
+
+    std::vector<sf::Text> users_connected;    
 
     while (window.isOpen()) {
         // Process events
@@ -193,13 +196,13 @@ int main(int argc, char** argv) {
                 socket = nullptr;
                 state = pong::State::Connecting;
                 future_socket = std::async(std::launch::async, [] (int port) -> std::unique_ptr<sf::TcpSocket> {
-                    auto socket = std::make_unique<sf::TcpSocket>();
-                    if (socket->connect("127.0.0.1", port) != sf::Socket::Done) {
+                    auto socket_ptr = std::make_unique<sf::TcpSocket>();
+                    if (socket_ptr->connect("127.0.0.1", port) != sf::Socket::Done) {
                         return nullptr;
                     }
-                    socket->setBlocking(false);
-                    return std::move(socket);
-                }, options.port ? *options.port : 48621);
+                    socket_ptr->setBlocking(false);
+                    return std::move(socket_ptr);
+                }, options.port ? *options.port : 48622);
                 break;
             }
             case pong::State::Connecting: {
@@ -213,6 +216,7 @@ int main(int argc, char** argv) {
 
                     socket = std::move(res);
                     state = pong::State::InvalidUser;
+                    has_send_username = false;
 
                     packet.clear();
                     packet << pong::packet::ChangeUsername{ *options.username };
@@ -220,11 +224,10 @@ int main(int argc, char** argv) {
                 break;
             }
             case pong::State::InvalidUser: {
-                static bool has_send_username{ false };
                 if (!has_send_username) {
-                    switch(socket->send(input_packet)) {
+                    switch(socket->send(packet)) {
                         case sf::Socket::Done: {
-                            input_packet.clear();
+                            packet.clear();
                             has_send_username = true;
                             break;
                         }
@@ -258,7 +261,13 @@ int main(int argc, char** argv) {
                                     error_code = 1;
                                 }
 
+                                for(auto const& user : response.users) {
+                                    auto& text = users_connected.emplace_back(user, font, 15);
+                                    text.setPosition(20, 20 + (users_connected.size() - 1) * (text.getCharacterSize() + 5));
+                                }
+
                                 state = pong::State::ValidUser;
+                                std::cout << "All good !\n";
                             } else {
                                 std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected UsernameResponse #" << static_cast<int>(pong::packet::PacketID::UsernameResponse) << '\n';
                             }
@@ -287,8 +296,7 @@ int main(int argc, char** argv) {
             }
 
             case pong::State::ValidUser: {
-                window.close();
-                std::cout << "All good !\n";
+                //std::cout << "All good !\n";
                 break;
             }
 
@@ -301,82 +309,16 @@ int main(int argc, char** argv) {
         }
 
         text.setString(state_to_string(state));
-        text.setPosition((boundaries.x + text.getLocalBounds().width) / 2, (boundaries.y + text.getLocalBounds().height) / 2);
-
-/*
-        if (input_updated) {
-
-            if (input_packet.getDataSize() == 0) {
-                input_packet << get_input(up_pressed, down_pressed);
-            }
-
-            switch(socket->send(input_packet)) {
-                case sf::Socket::Done: {
-                    input_packet.clear();
-                    input_updated = false;
-                    break;
-                }
-                case sf::Socket::Disconnected: {
-                    std::cerr << "Lost connection with server\n";
-                    window.close();
-                    break;
-                }
-
-                case sf::Socket::Error: {
-                    std::cerr << "Internal error on socket...\n";
-                    break;
-                }
-
-                default: {
-                    break;
-                }
-            }
-        }
-*/
-/*
-        auto dt = clock.restart().asSeconds();
-
-        ball.update(dt, pad_left.y, pad_right.y, boundaries, pad_padding, pad_height, pad_width, ball_radius);
-        pad_left.update(dt, pad_boundary);
-        pad_right.update(dt, pad_boundary);
-
-        ball_sprite.setPosition(ball.position);
-        player_sprite.setPosition(player_sprite.getPosition().x, pad_left.y);
-        opponent_sprite.setPosition(opponent_sprite.getPosition().x, pad_right.y);
-
-        switch(socket->receive(packet)) {
-            case sf::Socket::Done: {
-                packet >> ball >> pad_left >> pad_right;
-                
-                ball_sprite.setPosition(ball.position);
-                player_sprite.setPosition(player_sprite.getPosition().x, pad_left.y);
-                opponent_sprite.setPosition(opponent_sprite.getPosition().x, pad_right.y);
-
-                packet.clear();
-                break;
-            }
-
-            case sf::Socket::Disconnected: {
-                std::cerr << "Lost connection with server\n";
-                window.close();
-                break;
-            }
-
-            case sf::Socket::Error: {
-                std::cerr << "Internal error on socket...\n";
-                break;
-            }
-
-            default: {
-                break;
-            }
-        }
-*/
+        std::cout << "State: " << text.getString().toAnsiString() << '\n';
+        text.setPosition((boundaries.x - text.getLocalBounds().width) / 2, (boundaries.y - text.getLocalBounds().height) / 2);
         window.clear(sf::Color::Black);
 //        window.draw(player_sprite);
 //        window.draw(opponent_sprite);
 //        window.draw(ball_sprite);
         window.draw(text);
+        for(auto& text : users_connected) {
+            window.draw(text);
+        }
         window.display();
     }
 

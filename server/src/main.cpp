@@ -7,8 +7,10 @@
 #include <memory>
 #include <functional>
 #include <atomic>
+#include <algorithm>
 
 #include <multipong/Game.hpp>
+#include <multipong/Packets.hpp>
 
 std::mutex cout_mutex;
 
@@ -90,98 +92,151 @@ sf::Socket::Status receive_input(sf::TcpSocket& player, pong::Input& res, bool& 
     return status;
 }
 
+pong::packet::UsernameResponse::Result is_username_valid(std::string const& username) {
+    if (username.size() < 3) {
+        std::cout << '"' << username << '"' << " is too short\n";
+        return pong::packet::UsernameResponse::TooShort;
+    }
+
+    if (username.size() > 20) {
+        std::cout << '"' << username << '"' << " is too long\n";
+        return pong::packet::UsernameResponse::TooLong;
+    }
+
+    if (!std::all_of(std::begin(username), std::end(username), [] (auto c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+    })) {
+        std::cout << '"' << username << '"' << " is not valid\n";
+        return pong::packet::UsernameResponse::InvalidCharacters;
+    }
+
+    return pong::packet::UsernameResponse::Okay;
+
+}
+
+struct User {
+    std::string name;
+    std::unique_ptr<sf::TcpSocket> socket;
+};
+
 void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::TcpSocket>>& clients, std::atomic_bool& stop) {
     sf::Clock refresh_clock;
     float const refresh_rate = 0.05;
     bool force_refresh{ false };
 
-    GameRoom room;
+    std::vector<std::unique_ptr<sf::TcpSocket>> invalid_users;
+    std::vector<User> valid_user;
+    std::vector<std::pair<sf::Packet, sf::TcpSocket*>> partial_packets;
 
     while(!stop) {
         {
             std::lock_guard lk{ clients_mutex };
 
             for(auto& client : clients) {
-                if (!room.player_left) {
-                    room.player_left = std::move(client);
-                    room.packets.push_back(PeriodicPacket { room.player_left.get(), [game = &room.game] () {
-                        sf::Packet packet;
-                        packet << game->ball << game->pad_left << game->pad_right;
-                        return packet;
-                    }});
-                }
-                else if (!room.player_right) {
-                    room.player_right = std::move(client);
-                    room.packets.push_back(PeriodicPacket { room.player_right.get(), [game = &room.game] () {
-                        sf::Packet packet;
-                        packet << game->ball << game->pad_left << game->pad_right;
-                        return packet;
-                    }});
-                }
-                else {
-                    room.spectators.emplace_back(std::move(client));
-                    room.packets.push_back(PeriodicPacket { room.spectators.back().get(), [game = &room.game] () {
-                        sf::Packet packet;
-                        packet << game->ball << game->pad_left << game->pad_right;
-                        return packet;
-                    }});
-                }
+                invalid_users.emplace_back(std::move(client));
             }
 
             clients.clear();
         }
 
-        if (room.player_left && room.player_right) {
-            if (receive_input(*room.player_left, room.game.input_left, force_refresh) == sf::Socket::Disconnected) {
-                std::cout << "disconnection of the left player\n";
+        {
+            std::size_t end{ invalid_users.size() };
+            for(std::size_t i{ 0 }; i < end; ++i) {
+                auto& user{ invalid_users[i] };
+                auto& socket = *user;
 
-                for(std::size_t i{ 0 }; i < room.packets.size(); ++i) {
-                    auto& packet = room.packets[i];
-                    if (packet.socket == room.player_left.get()) {
-                        room.packets.erase(std::begin(room.packets) + i);
+                sf::Packet packet;
+                switch(socket.receive(packet)) {
+                    case sf::Socket::NotReady: {
+                        break;
+                    }
+
+                    case sf::Socket::Done: {
+                        pong::packet::PacketID packet_id; 
+                        packet >> packet_id;
+                        if (packet_id == pong::packet::PacketID::ChangeUsername) {
+                            pong::packet::ChangeUsername request;
+                            packet >> request;
+                            auto valid = is_username_valid(request.username);
+                            if (valid == pong::packet::UsernameResponse::Okay) {
+                                valid_user.emplace_back(User{ request.username, std::move(user) });
+                                if (i != end - 1) {
+                                    std::iter_swap(std::begin(partial_packets) + i, std::begin(partial_packets) + (end - 1));
+                                }
+                                --i;
+                                --end;
+
+                                std::cout << request.username << " got connected\n";
+                            }
+
+                            sf::Packet response;
+                            std::vector<std::string> users;
+                            for(auto const& u : valid_user) {
+                                users.emplace_back(u.name);
+                            }
+                            response << pong::packet::UsernameResponse {
+                                valid, users, {0, 1, 2, 42}
+                            };
+
+                            partial_packets.push_back({ response, &socket });
+                        } else {
+                            std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected ChangeUsername #" << static_cast<int>(pong::packet::PacketID::ChangeUsername) << '\n';
+                        }
+                        break;
+                    }
+
+                    default: {
+                        std::cout << "Remove a user\n";
+                        if (i != end - 1) {
+                            std::iter_swap(std::begin(partial_packets) + i, std::begin(partial_packets) + (end - 1));
+                        }
+                        --i;
+                        --end;
                         break;
                     }
                 }
-
-                room.player_left = nullptr;
             }
 
-            if (receive_input(*room.player_right, room.game.input_right, force_refresh) == sf::Socket::Disconnected) {
-                std::cout << "disconnection of the right player\n";
-
-                for(std::size_t i{ 0 }; i < room.packets.size(); ++i) {
-                    auto& packet = room.packets[i];
-                    if (packet.socket == room.player_right.get()) {
-                        room.packets.erase(std::begin(room.packets) + i);
-                        break;
-                    }
-                }
-
-                room.player_right = nullptr;
-            }
-
-            room.game.update();
-        } else {
-            room.game.clock.restart();
+            invalid_users.erase(std::begin(invalid_users) + end, std::end(invalid_users));
         }
 
-        if (!force_refresh && refresh_clock.getElapsedTime().asSeconds() < refresh_rate) { continue; }
-        refresh_clock.restart();
+        if (!partial_packets.empty()) {
+            std::size_t end{ partial_packets.size() };
 
-        force_refresh = false;
+            std::cout << end << " packets to send...\n";
 
-        for(auto& packet : room.packets) {
-            if (packet.send() == sf::Socket::Disconnected) {
-                std::lock_guard cout_lk{ cout_mutex };
-                std::cout << "disconnection of the client : " << packet.socket << '\n';
+            for(std::size_t i{ 0 }; i < end; ++i) {
+                auto& pair{ partial_packets[i] };
+
+                auto& socket = *pair.second;
+                auto& packet = pair.first; 
+
+                switch(socket.send(packet)) {
+                    case sf::Socket::Partial: {
+                        break;
+                    }
+
+                    default: {
+                        if (i != end - 1) {
+                            std::iter_swap(std::begin(partial_packets) + i, std::begin(partial_packets) + (end - 1));
+                        }
+                        --i;
+                        --end;
+                        break;
+                    }
+                }
             }
+
+            partial_packets.erase(std::begin(partial_packets) + end, std::end(partial_packets));
+
+            std::cout << partial_packets.size() << " packets partially sent\n";
         }
     }
 }
 
 int main() {
     sf::TcpListener listener;
-    listener.listen(48621);
+    listener.listen(48622);
 
     std::mutex clients_mutex;
     std::vector<std::unique_ptr<sf::TcpSocket>> clients;
