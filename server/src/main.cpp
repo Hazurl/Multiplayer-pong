@@ -125,7 +125,7 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
     bool force_refresh{ false };
 
     std::vector<std::unique_ptr<sf::TcpSocket>> invalid_users;
-    std::vector<User> valid_user;
+    std::vector<User> valid_users;
     std::vector<std::pair<sf::Packet, sf::TcpSocket*>> partial_packets;
 
     while(!stop) {
@@ -159,9 +159,19 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
                             packet >> request;
                             auto valid = is_username_valid(request.username);
                             if (valid == pong::packet::UsernameResponse::Okay) {
-                                valid_user.emplace_back(User{ request.username, std::move(user) });
+
+                                sf::Packet new_user_message;
+                                new_user_message << pong::packet::NewUser {
+                                    request.username
+                                };
+
+                                for(auto& v : valid_users) {
+                                    partial_packets.push_back({ new_user_message, v.socket.get() });
+                                }
+
+                                valid_users.emplace_back(User{ request.username, std::move(user) });
                                 if (i != end - 1) {
-                                    std::iter_swap(std::begin(partial_packets) + i, std::begin(partial_packets) + (end - 1));
+                                    std::iter_swap(std::begin(invalid_users) + i, std::begin(invalid_users) + (end - 1));
                                 }
                                 --i;
                                 --end;
@@ -171,7 +181,7 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
 
                             sf::Packet response;
                             std::vector<std::string> users;
-                            for(auto const& u : valid_user) {
+                            for(auto const& u : valid_users) {
                                 users.emplace_back(u.name);
                             }
                             response << pong::packet::UsernameResponse {
@@ -188,7 +198,7 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
                     default: {
                         std::cout << "Remove a user\n";
                         if (i != end - 1) {
-                            std::iter_swap(std::begin(partial_packets) + i, std::begin(partial_packets) + (end - 1));
+                            std::iter_swap(std::begin(invalid_users) + i, std::begin(invalid_users) + (end - 1));
                         }
                         --i;
                         --end;
@@ -198,6 +208,50 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
             }
 
             invalid_users.erase(std::begin(invalid_users) + end, std::end(invalid_users));
+        }
+
+        {
+            std::size_t end{ valid_users.size() };
+            for(std::size_t i{ 0 }; i < end; ++i) {
+                auto& user{ valid_users[i] };
+                auto& socket = *user.socket;
+
+                sf::Packet packet;
+                switch(socket.receive(packet)) {
+                    case sf::Socket::NotReady: {
+                        break;
+                    }
+
+                    case sf::Socket::Done: {
+                        pong::packet::PacketID packet_id; 
+                        packet >> packet_id;
+                        std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected nothing\n";
+                        break;
+                    }
+
+                    default: {
+                        sf::Packet new_user_message;
+                        new_user_message << pong::packet::OldUser {
+                            user.name
+                        };
+
+                        for(auto& v : valid_users) {
+                            if (v.socket.get() != &socket) {
+                                partial_packets.push_back({ new_user_message, v.socket.get() });
+                            }
+                        }
+                        std::cout << "Remove a user\n";
+                        if (i != end - 1) {
+                            std::iter_swap(std::begin(valid_users) + i, std::begin(valid_users) + (end - 1));
+                        }
+                        --i;
+                        --end;
+                        break;
+                    }
+                }
+            }
+
+            valid_users.erase(std::begin(valid_users) + end, std::end(valid_users));
         }
 
         if (!partial_packets.empty()) {
@@ -216,7 +270,18 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
                         break;
                     }
 
+                    case sf::Socket::Done: {
+                        if (i != end - 1) {
+                            std::iter_swap(std::begin(partial_packets) + i, std::begin(partial_packets) + (end - 1));
+                        }
+                        --i;
+                        --end;
+                        break;
+                    }
+
                     default: {
+                        std::cerr << "Error when sending a packet\n";
+
                         if (i != end - 1) {
                             std::iter_swap(std::begin(partial_packets) + i, std::begin(partial_packets) + (end - 1));
                         }

@@ -262,8 +262,8 @@ int main(int argc, char** argv) {
                                 }
 
                                 for(auto const& user : response.users) {
-                                    auto& text = users_connected.emplace_back(user, font, 15);
-                                    text.setPosition(20, 20 + (users_connected.size() - 1) * (text.getCharacterSize() + 5));
+                                    auto& tmp_text = users_connected.emplace_back(user, font, 15);
+                                    tmp_text.setPosition(20, 20 + (users_connected.size() - 1) * (tmp_text.getCharacterSize() + 5));
                                 }
 
                                 state = pong::State::ValidUser;
@@ -296,7 +296,55 @@ int main(int argc, char** argv) {
             }
 
             case pong::State::ValidUser: {
-                //std::cout << "All good !\n";
+                switch(socket->receive(packet)) {
+                    case sf::Socket::Done: {
+                        pong::packet::PacketID packet_id; 
+                        packet >> packet_id;
+                        if (packet_id == pong::packet::PacketID::NewUser) {
+                            pong::packet::NewUser new_user;
+                            packet >> new_user;
+                            
+                            auto& tmp_text = users_connected.emplace_back(new_user.username, font, 15);
+                            tmp_text.setPosition(20, 20 + (users_connected.size() - 1) * (tmp_text.getCharacterSize() + 5));
+                        } else if (packet_id == pong::packet::PacketID::OldUser) {
+                            pong::packet::OldUser old_user;
+                            packet >> old_user;
+
+                            sf::String old_username{ old_user.username };
+                            for(auto it = std::begin(users_connected); it != std::end(users_connected); ++it) {
+                                if (it->getString() == old_username) {
+                                    auto to_delete = it;
+                                    for(; it != std::end(users_connected); ++it) {
+                                        it->setPosition(20, it->getPosition().y - (it->getCharacterSize() + 5));
+                                    }
+
+                                    users_connected.erase(to_delete);
+
+                                    break;
+                                }
+                            }
+                        } else {
+                            std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected UsernameResponse #" << static_cast<int>(pong::packet::PacketID::UsernameResponse) << '\n';
+                        }
+                        break;
+                    }
+
+                    case sf::Socket::Disconnected: {
+                        state = pong::State::Offline;
+                        break;
+                    }
+
+                    case sf::Socket::Error: {
+                        window.close();
+                        std::cerr << "Internal error on socket when receiving username response...\n";
+                        error_code = 1;
+                        break;
+                    }
+
+                    default: {
+                        break;
+                    }
+                }
                 break;
             }
 
@@ -309,15 +357,14 @@ int main(int argc, char** argv) {
         }
 
         text.setString(state_to_string(state));
-        std::cout << "State: " << text.getString().toAnsiString() << '\n';
         text.setPosition((boundaries.x - text.getLocalBounds().width) / 2, (boundaries.y - text.getLocalBounds().height) / 2);
         window.clear(sf::Color::Black);
 //        window.draw(player_sprite);
 //        window.draw(opponent_sprite);
 //        window.draw(ball_sprite);
         window.draw(text);
-        for(auto& text : users_connected) {
-            window.draw(text);
+        for(auto& user : users_connected) {
+            window.draw(user);
         }
         window.display();
     }

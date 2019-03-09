@@ -41,6 +41,27 @@ sf::Packet& operator << (sf::Packet& p, UsernameResponse const& response) {
 
 
 
+
+sf::Packet& operator >> (sf::Packet& p, NewUser& user) {
+    return p >> user.username;
+}
+sf::Packet& operator << (sf::Packet& p, NewUser const& user) {
+    return p << static_cast<int>(PacketID::NewUser) << user.username;
+}
+
+
+
+
+sf::Packet& operator >> (sf::Packet& p, OldUser& user) {
+    return p >> user.username;
+}
+sf::Packet& operator << (sf::Packet& p, OldUser const& user) {
+    return p << static_cast<int>(PacketID::OldUser) << user.username;
+}
+
+
+
+
 sf::Packet& operator >> (sf::Packet& p, EnterRoom& room) {
     return p >> room.id;
 }

@@ -29,7 +29,7 @@ enum class State {
 
     /*
         [Client] Send EnterRoom
-        [SERVER] Send EnterRoomResponse, NewUser
+        [SERVER] Send EnterRoomResponse, NewUser, OldUser
     */
     ValidUser,
 
@@ -82,6 +82,8 @@ enum class PacketID {
     LeaveRoomResponse = 4,
     Input = 7,
     GameState = 8,
+    NewUser = 9,
+    OldUser = 10,
 };
 
 sf::Packet& operator >> (sf::Packet& p, PacketID& id);
@@ -109,6 +111,20 @@ struct UsernameResponse {
 
 sf::Packet& operator >> (sf::Packet& p, UsernameResponse& username);
 sf::Packet& operator << (sf::Packet& p, UsernameResponse const& username);
+
+struct NewUser {
+    std::string username;
+};
+
+sf::Packet& operator >> (sf::Packet& p, NewUser& username);
+sf::Packet& operator << (sf::Packet& p, NewUser const& username);
+
+struct OldUser {
+    std::string username;
+};
+
+sf::Packet& operator >> (sf::Packet& p, OldUser& username);
+sf::Packet& operator << (sf::Packet& p, OldUser const& username);
 
 struct EnterRoom {
     int id;
