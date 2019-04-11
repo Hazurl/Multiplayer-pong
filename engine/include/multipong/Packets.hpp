@@ -28,7 +28,7 @@ enum class State {
     InvalidUser,
 
     /*
-        [Client] Send EnterRoom
+        [Client] Send EnterRoom, CreateRoom
         [SERVER] Send EnterRoomResponse, NewUser, OldUser
     */
     ValidUser,
@@ -79,11 +79,15 @@ enum class PacketID {
     EnterRoom = 2,
     EnterRoomResponse = 3,
     LeaveRoom = 3,
-    LeaveRoomResponse = 4,
     Input = 7,
     GameState = 8,
     NewUser = 9,
     OldUser = 10,
+    CreateRoom = 11,
+    NewRoom = 12,
+    OldRoom = 13,
+    LobbyInfo = 14,
+    RoomInfo = 15,
 };
 
 sf::Packet& operator >> (sf::Packet& p, PacketID& id);
@@ -105,12 +109,18 @@ struct UsernameResponse {
     };
 
     Result result;
-    std::vector<std::string> users;
-    std::vector<int> rooms;
 };
 
 sf::Packet& operator >> (sf::Packet& p, UsernameResponse& username);
 sf::Packet& operator << (sf::Packet& p, UsernameResponse const& username);
+
+struct LobbyInfo {
+    std::vector<std::string> users;
+    std::vector<int> rooms;
+};
+
+sf::Packet& operator >> (sf::Packet& p, LobbyInfo& lobby);
+sf::Packet& operator << (sf::Packet& p, LobbyInfo const& lobby);
 
 struct NewUser {
     std::string username;
@@ -126,6 +136,20 @@ struct OldUser {
 sf::Packet& operator >> (sf::Packet& p, OldUser& username);
 sf::Packet& operator << (sf::Packet& p, OldUser const& username);
 
+struct NewRoom {
+    int id;
+};
+
+sf::Packet& operator >> (sf::Packet& p, NewRoom& username);
+sf::Packet& operator << (sf::Packet& p, NewRoom const& username);
+
+struct OldRoom {
+    int id;
+};
+
+sf::Packet& operator >> (sf::Packet& p, OldRoom& username);
+sf::Packet& operator << (sf::Packet& p, OldRoom const& username);
+
 struct EnterRoom {
     int id;
 };
@@ -133,36 +157,37 @@ struct EnterRoom {
 sf::Packet& operator >> (sf::Packet& p, EnterRoom& username);
 sf::Packet& operator << (sf::Packet& p, EnterRoom const& username);
 
+struct CreateRoom {};
+
+sf::Packet& operator >> (sf::Packet& p, CreateRoom& username);
+sf::Packet& operator << (sf::Packet& p, CreateRoom const& username);
+
 struct EnterRoomResponse {
+    enum Result {
+        Okay = 0,
+        Full = 1,
+        InvalidID = 2,
+    };
 
-    static int const ERROR_ID = 0;
-
-    int id;
-    std::string left_player, right_player;
-    std::vector<std::string> spectators;
+    Result result;
 };
 
 sf::Packet& operator >> (sf::Packet& p, EnterRoomResponse& username);
 sf::Packet& operator << (sf::Packet& p, EnterRoomResponse const& username);
 
-struct LeaveRoom {
-    int id;
+struct RoomInfo {
+    std::string left_player, right_player;
+    std::vector<std::string> spectators;
 };
+
+sf::Packet& operator >> (sf::Packet& p, RoomInfo& username);
+sf::Packet& operator << (sf::Packet& p, RoomInfo const& username);
+
+struct LeaveRoom {};
 
 sf::Packet& operator >> (sf::Packet& p, LeaveRoom& username);
 sf::Packet& operator << (sf::Packet& p, LeaveRoom const& username);
 
-struct LeaveRoomResponse {
-
-    static int const ERROR_ID = 0;
-
-    int id;
-    std::vector<std::string> users;
-    std::vector<int> rooms;
-};
-
-sf::Packet& operator >> (sf::Packet& p, LeaveRoomResponse& username);
-sf::Packet& operator << (sf::Packet& p, LeaveRoomResponse const& username);
 
 struct GameState {
     Ball ball;
