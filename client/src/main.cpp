@@ -9,6 +9,7 @@
 #include <optional>
 #include <future>
 #include <chrono>
+#include <deque>
 
 #include <multipong/Game.hpp>
 #include <multipong/Packets.hpp>
@@ -103,6 +104,11 @@ bool is_future_ready(std::future<T> const& f) {
     return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 }
 
+struct SendPacket {
+    sf::Packet packet;
+    std::function<void()> on_done;
+};
+
 int main(int argc, char** argv) {
     int error_code{ 0 };
 
@@ -133,15 +139,11 @@ int main(int argc, char** argv) {
 
     sf::Text text("", font, 32);
 
-
     ball_sprite.setPosition(ball_boundaries / 2.f);
     player_sprite.setPosition({ pad_padding - pad_width, pad_boundary / 2.f });
     opponent_sprite.setPosition({ boundaries.x - pad_padding, pad_boundary / 2.f });
 
-    pong::Ball ball;
-    pong::Pad pad_left;
-    pong::Pad pad_right;
-
+    pong::packet::GameState game_state;
     sf::Clock clock;
 
     bool up_pressed{ false };
@@ -150,12 +152,14 @@ int main(int argc, char** argv) {
     sf::Packet input_packet;
     
     bool has_send_username{ false };
-    
-    std::unique_ptr<sf::TcpSocket> socket;
+
+    std::deque<SendPacket> packets_to_send;
     sf::Packet packet;
+    std::unique_ptr<sf::TcpSocket> socket;
     std::future<std::unique_ptr<sf::TcpSocket>> future_socket;
 
-    std::vector<sf::Text> users_connected;    
+    std::vector<sf::Text> users_connected;
+    std::vector<sf::Text> rooms_online;
 
     while (window.isOpen()) {
         // Process events
@@ -173,6 +177,19 @@ int main(int argc, char** argv) {
                     if (event.key.code == sf::Keyboard::Up && !up_pressed) up_pressed = true;
                     else if (event.key.code == sf::Keyboard::Down && !down_pressed) down_pressed = true;
                     else input_updated = false;
+
+                    if (state == pong::State::ValidUser) {
+                        if (event.key.code == sf::Keyboard::R) {
+                            sf::Packet create_room_packet;
+                            create_room_packet << pong::packet::CreateRoom{};
+                            packets_to_send.push_back({
+                                create_room_packet,
+                                [&state] () {
+                                    state = pong::State::Spectator;
+                                }
+                            });
+                        }
+                    }
 
                     break;
                 }
@@ -218,36 +235,19 @@ int main(int argc, char** argv) {
                     state = pong::State::InvalidUser;
                     has_send_username = false;
 
-                    packet.clear();
-                    packet << pong::packet::ChangeUsername{ *options.username };
+                    sf::Packet change_username_packet;
+                    change_username_packet << pong::packet::ChangeUsername{ *options.username };
+                    packets_to_send.push_back({
+                        change_username_packet,
+                        [&has_send_username] () {
+                            has_send_username = true;
+                        } 
+                    });
                 }
                 break;
             }
             case pong::State::InvalidUser: {
-                if (!has_send_username) {
-                    switch(socket->send(packet)) {
-                        case sf::Socket::Done: {
-                            packet.clear();
-                            has_send_username = true;
-                            break;
-                        }
-                        case sf::Socket::Disconnected: {
-                            state = pong::State::Offline;
-                            break;
-                        }
-
-                        case sf::Socket::Error: {
-                            window.close();
-                            std::cerr << "Internal error on socket when sending username...\n";
-                            error_code = 1;
-                            break;
-                        }
-
-                        default: {
-                            break;
-                        }
-                    }
-                } else {
+                if (has_send_username) {
                     switch(socket->receive(packet)) {
                         case sf::Socket::Done: {
                             pong::packet::PacketID packet_id; 
@@ -264,6 +264,11 @@ int main(int argc, char** argv) {
                                 for(auto const& user : response.users) {
                                     auto& tmp_text = users_connected.emplace_back(user, font, 15);
                                     tmp_text.setPosition(20, 20 + (users_connected.size() - 1) * (tmp_text.getCharacterSize() + 5));
+                                }
+
+                                for(auto const& room : response.rooms) {
+                                    auto& tmp_text = rooms_online.emplace_back("#" + std::to_string(room), font, 15);
+                                    tmp_text.setPosition(boundaries.x - 20 - tmp_text.getLocalBounds().width, 20 + (rooms_online.size() - 1) * (tmp_text.getCharacterSize() + 5));
                                 }
 
                                 state = pong::State::ValidUser;
@@ -323,8 +328,51 @@ int main(int argc, char** argv) {
                                     break;
                                 }
                             }
+                        } else if (packet_id == pong::packet::PacketID::NewRoom) {
+                            pong::packet::NewRoom new_room;
+                            packet >> new_room;
+
+                            auto& tmp_text = rooms_online.emplace_back("#" + std::to_string(new_room.id), font, 15);
+                            tmp_text.setPosition(boundaries.x - 20 - tmp_text.getLocalBounds().width, 20 + (rooms_online.size() - 1) * (tmp_text.getCharacterSize() + 5));
                         } else {
-                            std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected UsernameResponse #" << static_cast<int>(pong::packet::PacketID::UsernameResponse) << '\n';
+                            std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected UsernameResponse #" << static_cast<int>(pong::packet::PacketID::NewUser);
+                            std::cerr << " or OldUser #" << static_cast<int>(pong::packet::PacketID::OldUser) << " or NewRoom #" << static_cast<int>(pong::packet::PacketID::NewRoom) << '\n';
+                        }
+                        break;
+                    }
+
+                    case sf::Socket::Disconnected: {
+                        state = pong::State::Offline;
+                        break;
+                    }
+
+                    case sf::Socket::Error: {
+                        window.close();
+                        std::cerr << "Internal error on socket when receiving username response...\n";
+                        error_code = 1;
+                        break;
+                    }
+
+                    default: {
+                        break;
+                    }
+                }
+                break;
+            }
+
+            case pong::State::Spectator: {
+                switch(socket->receive(packet)) {
+                    case sf::Socket::Done: {
+                        pong::packet::PacketID packet_id; 
+                        packet >> packet_id;
+                        if (packet_id == pong::packet::PacketID::GameState) {
+                            packet >> game_state;
+                            ball_sprite.setPosition(game_state.ball.position);
+                            player_sprite.setPosition(player_sprite.getPosition().x, game_state.left.y);
+                            opponent_sprite.setPosition(opponent_sprite.getPosition().x, game_state.right.y);
+
+                        } else {
+                            std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected GameState #" << static_cast<int>(pong::packet::PacketID::GameState) << '\n';
                         }
                         break;
                     }
@@ -356,15 +404,49 @@ int main(int argc, char** argv) {
             }
         }
 
+        if (!packets_to_send.empty()) {
+            std::cout << packets_to_send.size() << " packets remaining to send\n";
+            auto& p = packets_to_send.front();
+            switch(socket->send(p.packet)) {
+                case sf::Socket::Done: {
+                    p.on_done();
+                    packets_to_send.pop_front();
+                    std::cout << "packet successfully sent\n";
+                    break;
+                }
+                case sf::Socket::Disconnected: {
+                    state = pong::State::Offline;
+                    packets_to_send.clear();
+                    break;
+                }
+
+                case sf::Socket::Error: {
+                    window.close();
+                    std::cerr << "Internal error on socket when sending username...\n";
+                    error_code = 1;
+                    break;
+                }
+
+                default: {
+                    break;
+                }
+            }
+        }
+
         text.setString(state_to_string(state));
         text.setPosition((boundaries.x - text.getLocalBounds().width) / 2, (boundaries.y - text.getLocalBounds().height) / 2);
         window.clear(sf::Color::Black);
-//        window.draw(player_sprite);
-//        window.draw(opponent_sprite);
-//        window.draw(ball_sprite);
+        if (state == pong::State::Spectator) {
+            window.draw(ball_sprite);
+            window.draw(player_sprite);
+            window.draw(opponent_sprite);
+        }
         window.draw(text);
         for(auto& user : users_connected) {
             window.draw(user);
+        }
+        for(auto& room : rooms_online) {
+            window.draw(room);
         }
         window.display();
     }
