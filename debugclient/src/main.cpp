@@ -228,7 +228,7 @@ std::optional<Term> parse_term(std::string const& input, std::size_t& idx) {
 
             num = num * 10 + (c - '0');
             if (in_decimal_part) {
-                in_decimal_part *= 10;
+                inverse_factor *= 10;
             }
         }
 
@@ -255,92 +255,284 @@ std::optional<Term> parse_term(std::string const& input, std::size_t& idx) {
     return std::nullopt;
 }
 
-std::vector<Term> parse_terms(std::string const& input) {
-    // TODO: wipe out this functions and call `parse_term` until it hit the end of the string
-    // Good luck :D
-    
-    std::size_t idx{ 0 };
-    std::size_t const size = input.size(); 
+std::optional<std::string> parse_ident(std::string_view const& str, std::size_t& idx) {
+    if (idx >= str.size()) return "";
 
-    std::vector<Term> terms;
+    char c = str[idx++];
     std::string word;
-
-    bool quoted{ false };
-    bool escaped{ true };
-
-
-
-    while(idx < size) {
-        auto c = input[idx++];
-
-        if (quoted) {
-            if (c == '"' && !escaped) {
-                quoted = false;
-                terms.emplace_back(string_t{ std::move(word) });
-                word.clear();
-                continue;
-            }
-
-            if (c == '\\' && !escaped) {
-                escaped = true;
-                continue;
-            }
-
-            escaped = false;
-            word += c;
-        }
-
-        if (c == '[') {
-            continue;
-        }
-
-        if (c == ']') {
-            continue;
-        }
-
-        if (c == '(') {
-            continue;
-        }
-
-        if (c == ')') {
-            continue;
-        }
-
-        if (c == '{') {
-            continue;
-        }
-
-        if (c == '}') {
-            continue;
-        }
-
-        if (c == '"') {
-            if (!word.empty()) {
-                words.emplace_back(std::move(word));
-                word.clear();
-            }
-            quoted = true;
-            continue;
-        }
-
-        if(c == ' ') {
-            if (!word.empty()) {
-                words.emplace_back(std::move(word));
-                word.clear();
-            }
-
-            continue;
+    while(idx <= str.size() && c != ' ') {
+        if ((c < 'a' || c > 'z') && (c < 'A' || c > 'Z')) {
+            return std::nullopt;
         }
 
         word += c;
+        c = str[idx++];
     }
-/*
-    std::cout << "------------\n";
-    for(auto const& w : words) {
-        std::cout << "`" << w << "`\n";
+
+    return word;
+}
+
+std::optional<std::string> parse_string(std::string_view const& str, std::size_t& idx) {
+    if (idx + 1 >= str.size() || (str[idx] != '"' && str[idx] != '\'')) return std::nullopt;
+
+    char c = str[idx++];
+    char quote = c;
+    c = str[idx++];
+
+    std::string word;
+    while(c != quote) {
+        if (idx >= str.size()) return std::nullopt;
+        word += c;
+        c = str[idx++];
     }
-*/
-    return terms;
+
+    ++idx;
+
+    return word;
+}
+
+void skip_spaces(std::string_view const& str, std::size_t& idx) {
+    while(idx < str.size() && str[idx] == ' ') { ++idx; }
+}
+
+struct CommandParsingResult {
+    std::optional<std::variant<
+        pong::packet::ChangeUsername, 
+        pong::packet::UsernameResponse, 
+        pong::packet::EnterRoom, 
+        pong::packet::EnterRoomResponse, 
+        pong::packet::LeaveRoom, 
+        pong::packet::Input, 
+        pong::packet::GameState, 
+        pong::packet::NewUser, 
+        pong::packet::OldUser, 
+        pong::packet::CreateRoom, 
+        pong::packet::NewRoom, 
+        pong::packet::OldRoom, 
+        pong::packet::LobbyInfo, 
+        pong::packet::RoomInfo>> command;
+
+    struct range_t {
+        std::size_t idx;
+        std::size_t len;
+    };
+    std::vector<range_t> errors;
+    std::vector<std::string> predictions;
+};
+
+CommandParsingResult parse_change_username(std::string_view const& str, std::size_t& idx) {
+    skip_spaces(str, idx);
+
+    if (idx >= str.size()) {
+        return CommandParsingResult {
+            std::nullopt,
+            {},
+            { "''" }
+        };
+    }
+
+    char quote = str[idx];
+
+    auto username = parse_string(str, idx);
+    if (!username) {
+        std::vector<std::string> predictions;
+        if (quote == '\'' || quote == '"') {
+            predictions.emplace_back(1, quote);
+        }
+        return CommandParsingResult {
+            std::nullopt,
+            { { idx, str.size() - idx } },
+            predictions
+        };
+    }
+
+    return CommandParsingResult {
+        pong::packet::ChangeUsername{ *username },
+        {},
+        {}
+    };
+
+}
+
+CommandParsingResult parse_username_response(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_enter_room(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_enter_room_response(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_room_info(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_leave_room(std::string_view const& str, std::size_t& idx) {
+    std::size_t const initial_idx{ idx };
+    while(idx < str.size()) {
+        char c = str[idx++];
+        if (c != ' ') {
+            return CommandParsingResult {
+                std::nullopt,
+                { { initial_idx, str.size() - initial_idx } },
+                {}
+            };
+        }
+    }
+    return CommandParsingResult {
+        pong::packet::LeaveRoom{},
+        {},
+        {}
+    };  
+}
+
+CommandParsingResult parse_create_room(std::string_view const& str, std::size_t& idx) {
+    std::size_t const initial_idx{ idx };
+    while(idx < str.size()) {
+        char c = str[idx++];
+        if (c != ' ') {
+            return CommandParsingResult {
+                std::nullopt,
+                { { initial_idx, str.size() - initial_idx } },
+                {}
+            };
+        }
+    }
+    return CommandParsingResult {
+        pong::packet::CreateRoom{},
+        {},
+        {}
+    };  
+}
+
+CommandParsingResult parse_new_user(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_old_user(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_new_room(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_old_room(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_lobby_info(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_input(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_game_state(std::string_view const& str, std::size_t& idx) {
+    return CommandParsingResult {
+        std::nullopt,
+        { { idx, str.size() - idx } },
+        {}
+    };
+}
+
+CommandParsingResult parse_command(std::string_view const& str) {
+    std::size_t idx{ 0 };
+
+    auto name = parse_ident(str, idx);
+    if (!name) {
+        return CommandParsingResult {
+            std::nullopt,
+            { { 0, str.size() } },
+            {}  
+        };
+    }
+
+    std::cout << "~~ " << *name << '\n';
+
+    std::pair<std::string_view, CommandParsingResult(*)(std::string_view const&, std::size_t&)> const names[] {
+        { "ChangeUsername", parse_change_username }, 
+        { "UsernameResponse", parse_username_response }, 
+        { "EnterRoom", parse_enter_room }, 
+        { "EnterRoomResponse", parse_enter_room_response }, 
+        { "LeaveRoom", parse_leave_room }, 
+        { "Input", parse_input }, 
+        { "GameState", parse_game_state }, 
+        { "NewUser", parse_new_user }, 
+        { "OldUser", parse_old_user }, 
+        { "CreateRoom", parse_create_room }, 
+        { "NewRoom", parse_new_room }, 
+        { "OldRoom", parse_old_room }, 
+        { "LobbyInfo", parse_lobby_info }, 
+        { "RoomInfo", parse_room_info }
+    };
+
+    std::vector<std::string> predictions;
+
+    for(auto&&[n, f] : names) {
+        if (n == *name) {
+            return f(str, idx);
+        }
+
+        if (n.size() >= name->size() && n.substr(0, name->size()) == std::string_view{ *name }) {
+            predictions.push_back(std::string{ n.substr(name->size()) });
+        }
+    }
+
+    std::vector<CommandParsingResult::range_t> errors;
+    if (predictions.empty()) {
+        errors.push_back({ 0, name->size() });
+    }
+
+    return CommandParsingResult {
+        std::nullopt,
+        errors,
+        predictions  
+    };
 }
 
 struct TextArea : sf::Drawable {
@@ -474,17 +666,31 @@ int main(int argc, char** argv) {
                             }
                         } 
                         else {
+                            if (event.text.unicode < 32 || event.text.unicode > 127) {
+                                break;
+                            }
                             auto str = text_area.text.getString();
                             str.insert(str.getSize(), event.text.unicode);
                             text_area.text.setString(str);
                         }
 
-                        parse_terms(text_area.text.getString().toAnsiString());
+                        //parse_terms(text_area.text.getString().toAnsiString());
 
                         break;
                     }
 
                     case sf::Event::KeyPressed: {
+
+                        if (event.key.code == sf::Keyboard::Enter) {
+                            auto res = parse_command(text_area.text.getString().toAnsiString());
+                            std::cout << (res.command ? std::visit([] (auto const& v) { return packet_to_string(v).toAnsiString(); }, *res.command) : "Not found") << '\n';
+                            for(auto const& p : res.predictions) {
+                                std::cout << "> " << p << '\n';
+                            }
+                            for(auto const& e : res.errors) {
+                                std::cout << "# " << e.idx << " ~> " << e.len << '\n';
+                            }
+                        }
 
                         break;
                     }
