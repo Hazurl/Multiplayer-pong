@@ -1,5 +1,6 @@
 #include <SFML/Network.hpp>
 #include <SFML/Graphics.hpp>
+#include <SFML/OpenGL.hpp>
 
 #include <iostream>
 #include <thread>
@@ -14,6 +15,8 @@
 
 #include <multipong/Game.hpp>
 #include <multipong/Packets.hpp>
+
+#include <RichText/RichText.hpp>
 
 std::string to_string(float f) {
     auto str = std::to_string(f);
@@ -258,15 +261,23 @@ std::optional<Term> parse_term(std::string const& input, std::size_t& idx) {
 std::optional<std::string> parse_ident(std::string_view const& str, std::size_t& idx) {
     if (idx >= str.size()) return "";
 
-    char c = str[idx++];
+    std::cout << "# `" << str << "`\n";
+
     std::string word;
-    while(idx <= str.size() && c != ' ') {
+
+    while(idx < str.size()) {        
+        char c = str[idx];
+
+        if (c == ' ') {
+            break;
+        }
+
         if ((c < 'a' || c > 'z') && (c < 'A' || c > 'Z')) {
             return std::nullopt;
         }
 
         word += c;
-        c = str[idx++];
+        ++idx;
     }
 
     return word;
@@ -292,7 +303,7 @@ std::optional<std::string> parse_string(std::string_view const& str, std::size_t
 }
 
 void skip_spaces(std::string_view const& str, std::size_t& idx) {
-    while(idx < str.size() && str[idx] == ' ') { ++idx; }
+    while(idx < str.size() && str[idx] == ' ') { ++idx; std::cout << "||SKIP||\n"; }
 }
 
 struct CommandParsingResult {
@@ -321,14 +332,17 @@ struct CommandParsingResult {
 };
 
 CommandParsingResult parse_change_username(std::string_view const& str, std::size_t& idx) {
-    skip_spaces(str, idx);
+    {
+        std::size_t idx_before_skip{ idx };
+        skip_spaces(str, idx);
 
-    if (idx >= str.size()) {
-        return CommandParsingResult {
-            std::nullopt,
-            {},
-            { "''" }
-        };
+        if (idx >= str.size()) {
+            return CommandParsingResult {
+                std::nullopt,
+                {},
+                { idx_before_skip == idx ? " ''" : "''" }
+            };
+        }
     }
 
     char quote = str[idx];
@@ -535,12 +549,12 @@ CommandParsingResult parse_command(std::string_view const& str) {
     };
 }
 
-struct TextArea : sf::Drawable {
+struct TextArea : sf::Drawable, sf::Transformable {
 
-    TextArea(sf::Font& font, sf::String const& default_string, unsigned height, unsigned width) : default_text(default_string, font, height - 6), text("", font, height - 6), box({ static_cast<float>(width), static_cast<float>(height) }) {
-        default_text.setColor(sf::Color{100, 100, 100});
-        default_text.setOrigin({ -3, -1 });
-        default_text.setStyle(sf::Text::Style::Italic);
+    TextArea(sf::Font& font, sf::String const& default_string, unsigned height, unsigned width) : default_message{ default_string }, prediction(default_message, font, height - 6), text("", font, height - 6), box({ static_cast<float>(width), static_cast<float>(height) }) {
+        prediction.setColor(sf::Color{100, 100, 100});
+        prediction.setOrigin({ -3, -1 });
+        prediction.setStyle(sf::Text::Style::Italic);
 
         text.setColor(sf::Color::White);
         text.setOrigin({ -3, -1 });
@@ -550,33 +564,41 @@ struct TextArea : sf::Drawable {
         box.setOutlineThickness(2);
     }
 
-    void set_position(sf::Vector2f const& position) {
-        box.setPosition(position);
-        text.setPosition(position);
-        default_text.setPosition(position);
-    }
-
-    void move(sf::Vector2f const& disp) {
-        return set_position(disp + get_position());
-    }
-
-    sf::Vector2f get_position() const {
-        return box.getPosition();
+    void update() {
+        auto const& text_content = text.getString();
+        auto command_str = text_content.toAnsiString();
+        if (command_str.empty()) {
+            text.setString("");
+            prediction.setString(default_message);
+            prediction.setPosition(0, 0);
+        }
+        else {
+            auto res = parse_command(command_str);
+            auto pred = res.predictions.empty() ? "" : res.predictions.front();
+            std::cout << "Pred: `" << pred << "`\n";
+            prediction.setString(pred);
+            if (!pred.empty()) {
+                auto& font = *text.getFont();
+                auto last_character = text_content[text_content.getSize()-1];
+                auto const& last_glyph = font.getGlyph(last_character, text.getCharacterSize(), text.getStyle() & sf::Text::Bold);
+                auto kerning = font.getKerning(last_character, pred.front(), text.getCharacterSize());
+                prediction.setPosition(text.getLocalBounds().width + last_glyph.advance - last_glyph.bounds.width + kerning, 0);
+            }
+        }
     }
 
     /* Drawable */
     void draw(sf::RenderTarget& target, sf::RenderStates states) const override {
+        states.transform *= getTransform();
         target.draw(box, states);
-        if (text.getString().isEmpty()) {
-            target.draw(default_text, states);
-        }
-        else {
-            target.draw(text, states);
-        }
+
+        target.draw(prediction, states);
+        target.draw(text, states);
     }
 
 
-    sf::Text default_text;
+    sf::String default_message;
+    sf::Text prediction;
     sf::Text text;
     sf::RectangleShape box;
 };
@@ -629,7 +651,7 @@ int main(int argc, char** argv) {
         sf::Clock clock;
 
         TextArea text_area(font, "Type a packet to send it", 20, 780);
-        text_area.set_position({8, 568});
+        text_area.setPosition({8, 568});
 
         /* --------------------------
          * MAIN LOOP
@@ -673,6 +695,8 @@ int main(int argc, char** argv) {
                             str.insert(str.getSize(), event.text.unicode);
                             text_area.text.setString(str);
                         }
+
+                        text_area.update();
 
                         //parse_terms(text_area.text.getString().toAnsiString());
 

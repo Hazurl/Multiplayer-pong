@@ -91,7 +91,7 @@ STATIC_LINK_FLAG := rcs
 
 # Include path
 # Must be use with -I
-INC_FLAG := -I $(INC_FOLDER) -I ../engine/include
+INC_FLAG := -I $(INC_FOLDER) -I ../engine/include -I ./lib
 
 #####
 ##### LIBRARY
@@ -99,19 +99,27 @@ INC_FLAG := -I $(INC_FOLDER) -I ../engine/include
 
 # Path to libaries if not in $PATH, for example (relative to the project folder): lib/
 # Must be use with -L
-LIBS_PATH := -L ../engine/build/static
+LIBS_PATH := -L ../engine/build/static -L ./lib/RichText
 
 # For example: -lsfml-graphics
-LIBS := -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network -lmulti-pong-engine
+LIBS := -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network -lmulti-pong-engine -lrichtext
 
 # Library that require to be build
-LIB_TO_BUILD := ../engine/build/static/libmulti-pong-engine.a
+LIB_TO_BUILD := ../engine/build/static/libmulti-pong-engine.a ./lib/RichText/librichtext.a
 
 # Create rules to build the libraries
 
 ../engine/build/static/libmulti-pong-engine.a:
 	@$(call _special,BUILDING STATIC LIBRARY ($@)...)
 	@cd ../engine/ && make MAKEFLAGS="" | sed "s/^/\t/"
+
+./lib/RichText/librichtext.a:
+	@$(call _special,BUILDING STATIC LIBRARY ($@)...)
+	@$(call _build-msg,$(notdir ./lib/RichText/RichText.o),$(call _join,$(_comma)$(_space),$(strip $(notdir ./lib/RichText/RichText.cpp $(wildcard $(word 2,$^))))))
+	@$(CXX) -c -I ./lib/RichText $(FLAGS) -o ./lib/RichText/RichText.o ./lib/RichText/RichText.cpp
+	@$(call _sub-header,Archiving...)
+	@$(SXX) $(STATIC_LINK_FLAG) $@ ./lib/RichText/RichText.o
+	@$(call _header,Static library done ($@))
 
 ###############################################
 #                   PRIVATE                   #
