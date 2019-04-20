@@ -554,7 +554,7 @@ struct TextArea : sf::Drawable, sf::Transformable {
     TextArea(sf::Font& font, sf::String const& default_string, unsigned height, unsigned width) : default_message{ default_string }, prediction(default_message, font, height - 6), text("", font, height - 6), box({ static_cast<float>(width), static_cast<float>(height) }) {
         prediction.setColor(sf::Color{100, 100, 100});
         prediction.setOrigin({ -3, -1 });
-        prediction.setStyle(sf::Text::Style::Italic);
+        //prediction.setStyle(sf::Text::Style::Italic);
 
         text.setColor(sf::Color::White);
         text.setOrigin({ -3, -1 });
@@ -575,14 +575,23 @@ struct TextArea : sf::Drawable, sf::Transformable {
         else {
             auto res = parse_command(command_str);
             auto pred = res.predictions.empty() ? "" : res.predictions.front();
-            std::cout << "Pred: `" << pred << "`\n";
             prediction.setString(pred);
             if (!pred.empty()) {
                 auto& font = *text.getFont();
                 auto last_character = text_content[text_content.getSize()-1];
                 auto const& last_glyph = font.getGlyph(last_character, text.getCharacterSize(), text.getStyle() & sf::Text::Bold);
                 auto kerning = font.getKerning(last_character, pred.front(), text.getCharacterSize());
-                prediction.setPosition(text.getLocalBounds().width + last_glyph.advance - last_glyph.bounds.width + kerning, 0);
+
+                auto x = text.getLocalBounds().width + text.getLocalBounds().left;
+
+                if (last_character != L' ' && last_character != L'\n') {
+                    x -= last_glyph.bounds.left + last_glyph.bounds.width;
+                    x += last_glyph.advance;
+                }
+
+                x += kerning;
+
+                prediction.setPosition(x, 0);
             }
         }
     }
@@ -640,7 +649,6 @@ int main(int argc, char** argv) {
         
         /* Open windows */
         sf::RenderWindow window(sf::VideoMode(800, 600), "SFML Multiplayer pong");
-
         /* Load assets */
         sf::Font font;
         if (!font.loadFromFile("../assets/neoletters.ttf")) {
