@@ -16,7 +16,7 @@
 #include <multipong/Game.hpp>
 #include <multipong/Packets.hpp>
 
-#include <RichText/RichText.hpp>
+#include <SFML-Toolkit/include/sftk/fancyText/FancyText.hpp>
 
 std::string to_string(float f) {
     auto str = std::to_string(f);
@@ -323,11 +323,7 @@ struct CommandParsingResult {
         pong::packet::LobbyInfo, 
         pong::packet::RoomInfo>> command;
 
-    struct range_t {
-        std::size_t idx;
-        std::size_t len;
-    };
-    std::vector<range_t> errors;
+    std::optional<std::size_t> index_of_error;
     std::vector<std::string> predictions;
 };
 
@@ -355,7 +351,7 @@ CommandParsingResult parse_change_username(std::string_view const& str, std::siz
         }
         return CommandParsingResult {
             std::nullopt,
-            { { idx, str.size() - idx } },
+            predictions.empty() ? std::optional<std::size_t>(idx) : std::nullopt,
             predictions
         };
     }
@@ -371,7 +367,7 @@ CommandParsingResult parse_change_username(std::string_view const& str, std::siz
 CommandParsingResult parse_username_response(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -379,7 +375,7 @@ CommandParsingResult parse_username_response(std::string_view const& str, std::s
 CommandParsingResult parse_enter_room(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -387,7 +383,7 @@ CommandParsingResult parse_enter_room(std::string_view const& str, std::size_t& 
 CommandParsingResult parse_enter_room_response(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -395,7 +391,7 @@ CommandParsingResult parse_enter_room_response(std::string_view const& str, std:
 CommandParsingResult parse_room_info(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -407,7 +403,7 @@ CommandParsingResult parse_leave_room(std::string_view const& str, std::size_t& 
         if (c != ' ') {
             return CommandParsingResult {
                 std::nullopt,
-                { { initial_idx, str.size() - initial_idx } },
+                { idx },
                 {}
             };
         }
@@ -426,7 +422,7 @@ CommandParsingResult parse_create_room(std::string_view const& str, std::size_t&
         if (c != ' ') {
             return CommandParsingResult {
                 std::nullopt,
-                { { initial_idx, str.size() - initial_idx } },
+                { idx },
                 {}
             };
         }
@@ -441,7 +437,7 @@ CommandParsingResult parse_create_room(std::string_view const& str, std::size_t&
 CommandParsingResult parse_new_user(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -449,7 +445,7 @@ CommandParsingResult parse_new_user(std::string_view const& str, std::size_t& id
 CommandParsingResult parse_old_user(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -457,7 +453,7 @@ CommandParsingResult parse_old_user(std::string_view const& str, std::size_t& id
 CommandParsingResult parse_new_room(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -465,7 +461,7 @@ CommandParsingResult parse_new_room(std::string_view const& str, std::size_t& id
 CommandParsingResult parse_old_room(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -473,7 +469,7 @@ CommandParsingResult parse_old_room(std::string_view const& str, std::size_t& id
 CommandParsingResult parse_lobby_info(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -481,7 +477,7 @@ CommandParsingResult parse_lobby_info(std::string_view const& str, std::size_t& 
 CommandParsingResult parse_input(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -489,7 +485,7 @@ CommandParsingResult parse_input(std::string_view const& str, std::size_t& idx) 
 CommandParsingResult parse_game_state(std::string_view const& str, std::size_t& idx) {
     return CommandParsingResult {
         std::nullopt,
-        { { idx, str.size() - idx } },
+        { idx },
         {}
     };
 }
@@ -501,7 +497,7 @@ CommandParsingResult parse_command(std::string_view const& str) {
     if (!name) {
         return CommandParsingResult {
             std::nullopt,
-            { { 0, str.size() } },
+            { 0 },
             {}  
         };
     }
@@ -537,62 +533,55 @@ CommandParsingResult parse_command(std::string_view const& str) {
         }
     }
 
-    std::vector<CommandParsingResult::range_t> errors;
-    if (predictions.empty()) {
-        errors.push_back({ 0, name->size() });
-    }
-
     return CommandParsingResult {
         std::nullopt,
-        errors,
+        predictions.empty() ? std::optional<std::size_t>(0) : std::nullopt,
         predictions  
     };
 }
 
 struct TextArea : sf::Drawable, sf::Transformable {
 
-    TextArea(sf::Font& font, sf::String const& default_string, unsigned height, unsigned width) : default_message{ default_string }, prediction(default_message, font, height - 6), text("", font, height - 6), box({ static_cast<float>(width), static_cast<float>(height) }) {
-        prediction.setColor(sf::Color{100, 100, 100});
-        prediction.setOrigin({ -3, -1 });
-        //prediction.setStyle(sf::Text::Style::Italic);
-
-        text.setColor(sf::Color::White);
-        text.setOrigin({ -3, -1 });
+    TextArea(sf::Font& font, sf::String const& default_string, unsigned height, unsigned width) 
+        : font{ font }, default_message{ default_string }
+        , fancy_text{ sftk::TextBuilder{ font } << sftk::txt::size(height - 6) << sf::Color{ 100, 100, 100 } << default_message, sf::VertexBuffer::Usage::Dynamic }
+        , box({ static_cast<float>(width), static_cast<float>(height) }) {
 
         box.setFillColor(sf::Color::Black);
         box.setOutlineColor(sf::Color::White);
         box.setOutlineThickness(2);
+
+        fancy_text.setOrigin(0, fancy_text.get_local_bounds().height / 2.f);
+        fancy_text.setPosition(3, height / 2.f);
     }
 
     void update() {
-        auto const& text_content = text.getString();
-        auto command_str = text_content.toAnsiString();
-        if (command_str.empty()) {
-            text.setString("");
-            prediction.setString(default_message);
-            prediction.setPosition(0, 0);
+        if (content.empty()) {
+            fancy_text.set_text(sftk::TextBuilder{ font }
+                << sftk::txt::size(box.getSize().y - 6)
+                << sf::Color{ 100, 100, 100 }
+                << default_message
+            );
+
         }
         else {
-            auto res = parse_command(command_str);
+            auto res = parse_command(content);
             auto pred = res.predictions.empty() ? "" : res.predictions.front();
-            prediction.setString(pred);
-            if (!pred.empty()) {
-                auto& font = *text.getFont();
-                auto last_character = text_content[text_content.getSize()-1];
-                auto const& last_glyph = font.getGlyph(last_character, text.getCharacterSize(), text.getStyle() & sf::Text::Bold);
-                auto kerning = font.getKerning(last_character, pred.front(), text.getCharacterSize());
 
-                auto x = text.getLocalBounds().width + text.getLocalBounds().left;
-
-                if (last_character != L' ' && last_character != L'\n') {
-                    x -= last_glyph.bounds.left + last_glyph.bounds.width;
-                    x += last_glyph.advance;
+            auto builder = sftk::TextBuilder{ font } << sftk::txt::size(box.getSize().y - 6);
+            bool is_red{ false };
+            for(std::size_t i{ 0 }; i < content.size(); ++i) {
+                bool is_in_error = res.index_of_error && i >= *res.index_of_error;
+                if (is_in_error && !is_red) {
+                    builder.set_fill_color(sf::Color::Red);
+                } else if (!is_in_error && is_red) {
+                    builder.set_fill_color(sf::Color::White);
                 }
-
-                x += kerning;
-
-                prediction.setPosition(x, 0);
+                builder.append(content[i]);
             }
+            fancy_text.set_text(std::move(builder)
+                << sf::Color{ 100, 100, 100 }
+                << pred);
         }
     }
 
@@ -601,14 +590,16 @@ struct TextArea : sf::Drawable, sf::Transformable {
         states.transform *= getTransform();
         target.draw(box, states);
 
-        target.draw(prediction, states);
-        target.draw(text, states);
+        //target.draw(prediction, states);
+        //target.draw(text, states);
+        target.draw(fancy_text, states);
     }
 
 
-    sf::String default_message;
-    sf::Text prediction;
-    sf::Text text;
+    sf::Font& font;
+    std::string const default_message;
+    std::string content;
+    sftk::FancyText fancy_text;
     sf::RectangleShape box;
 };
 
@@ -689,19 +680,15 @@ int main(int argc, char** argv) {
                         if (event.text.unicode >= 128) { break; } // not ascii
 
                         if (event.text.unicode == 8) { // Delete
-                            auto str = text_area.text.getString();
-                            if (!str.isEmpty()) {
-                                str.erase(str.getSize() - 1);
-                                text_area.text.setString(str);
+                            if (!text_area.content.empty()) {
+                                text_area.content.pop_back();
                             }
                         } 
                         else {
                             if (event.text.unicode < 32 || event.text.unicode > 127) {
                                 break;
                             }
-                            auto str = text_area.text.getString();
-                            str.insert(str.getSize(), event.text.unicode);
-                            text_area.text.setString(str);
+                            text_area.content.push_back(event.text.unicode);
                         }
 
                         text_area.update();
@@ -714,13 +701,13 @@ int main(int argc, char** argv) {
                     case sf::Event::KeyPressed: {
 
                         if (event.key.code == sf::Keyboard::Enter) {
-                            auto res = parse_command(text_area.text.getString().toAnsiString());
+                            auto res = parse_command(text_area.content);
                             std::cout << (res.command ? std::visit([] (auto const& v) { return packet_to_string(v).toAnsiString(); }, *res.command) : "Not found") << '\n';
                             for(auto const& p : res.predictions) {
                                 std::cout << "> " << p << '\n';
                             }
-                            for(auto const& e : res.errors) {
-                                std::cout << "# " << e.idx << " ~> " << e.len << '\n';
+                            if(res.index_of_error) {
+                                std::cout << "# " << *res.index_of_error << '\n';
                             }
                         }
 

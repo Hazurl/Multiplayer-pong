@@ -1,0 +1,3 @@
+[submodule "debugclient/lib/SFML-Toolkit"]
+	path = debugclient/lib/SFML-Toolkit
+	url = https://github.com/Hazurl/SFML-Toolkit
