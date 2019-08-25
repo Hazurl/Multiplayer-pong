@@ -547,7 +547,8 @@ struct TextArea : sf::Drawable, sf::Transformable {
         : font{ font }, default_message{ default_string }
         , fancy_text{ sftk::TextBuilder{ font } << sftk::txt::size(height - 6) << sf::Color{ 100, 100, 100 } << default_message, sf::VertexBuffer::Usage::Dynamic }
         , box({ static_cast<float>(width), static_cast<float>(height) })
-        , cursor({ font.getGlyph('X', height - 6, false, 0).bounds.width, 2 }) {
+        , cursor({ font.getGlyph('X', height - 6, false, 0).bounds.width, 2 })
+        , selection({ 0, height }) {
 
         box.setFillColor(sf::Color::Black);
         box.setOutlineColor(sf::Color::White);
@@ -558,6 +559,10 @@ struct TextArea : sf::Drawable, sf::Transformable {
 
         cursor.setFillColor(sf::Color::White);
         cursor.setPosition(3, 17);
+
+
+        selection.setFillColor(sf::Color::White);
+        selection.setPosition(3, 0);
     }
 
     void update() {
@@ -577,36 +582,72 @@ struct TextArea : sf::Drawable, sf::Transformable {
 
             auto builder = sftk::TextBuilder{ font } << sftk::txt::size(box.getSize().y - 6);
             bool is_red{ false };
+            bool is_selected{ false };
 
             float cursor_x{ 3 };
+            float selection_lower_bound_x{ 3 };
+            float selection_upper_bound_x{ 3 };
             std::cout << "INDEX: " << cursor_index << '\n';
+
+            std::size_t const selection_lower_bound = std::max(0, static_cast<int>(cursor_index) + std::min(0, selection_offset));
+            std::size_t const selection_upper_bound = cursor_index + std::max(0, selection_offset);
 
             for(std::size_t i{ 0 }; i < content.size(); ++i) {
                 bool is_in_error = res.index_of_error && i >= *res.index_of_error;
+                bool is_in_selection = i >= selection_lower_bound && i < selection_upper_bound;
+
                 if (is_in_error && !is_red) {
                     builder.set_fill_color(sf::Color::Red);
-                } else if (!is_in_error && is_red) {
-                    builder.set_fill_color(sf::Color::White);
+                    is_red = true;
+                } 
+                else if (!is_in_error && is_red) {
+                    builder.set_fill_color(is_in_selection ? sf::Color::Black : sf::Color::White);
+                    is_red = false;
+                }
+                
+                if (is_in_selection && !is_selected) {
+                    builder.set_fill_color(is_in_error ? sf::Color::Red : sf::Color::Black);
+                    is_selected = true;
+                } 
+                else if (!is_in_selection && is_selected) {
+                    builder.set_fill_color(is_in_error ? sf::Color::Red : sf::Color::White);
+                    is_selected = false;
                 }
                 builder.append(content[i]);
 
                 if(i + 1 == cursor_index) {
                     cursor_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
                 }
+
+                if(i + 1 == selection_lower_bound) {
+                    selection_lower_bound_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
+                }
+
+                if(i + 1 == selection_upper_bound) {
+                    selection_upper_bound_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
+                }
             }
 
-            if (cursor_index == 0) {
-                cursor_x = 3; 
-            }
-            else if (cursor_index >= content.size()) {
+            if (cursor_index >= content.size()) {
                 cursor_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
                 cursor_index = content.size();
             } 
+
+            if (selection_lower_bound >= content.size()) {
+                selection_lower_bound_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
+            } 
+
+            if (selection_upper_bound >= content.size()) {
+                selection_upper_bound_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
+            } 
+
             fancy_text.set_text(std::move(builder)
                 << sf::Color{ 100, 100, 100 }
                 << pred);
 
             cursor.setPosition(cursor_x, 17);
+            selection.setSize({ selection_upper_bound_x == selection_lower_bound_x ? 0 : selection_upper_bound_x - selection_lower_bound_x + 1, selection.getSize().y });
+            selection.setPosition(selection_lower_bound_x - 1, 0);
         }
     }
 
@@ -617,6 +658,7 @@ struct TextArea : sf::Drawable, sf::Transformable {
 
         //target.draw(prediction, states);
         //target.draw(text, states);
+        target.draw(selection, states);
         target.draw(fancy_text, states);
         target.draw(cursor, states);
     }
@@ -628,7 +670,9 @@ struct TextArea : sf::Drawable, sf::Transformable {
     sftk::FancyText fancy_text;
     sf::RectangleShape box;
     sf::RectangleShape cursor;
+    sf::RectangleShape selection;
     std::size_t cursor_index{ 0 };
+    int selection_offset{ 0 };
 };
 
 int main(int argc, char** argv) {
@@ -707,12 +751,40 @@ int main(int argc, char** argv) {
                     if (event.text.unicode >= 128) { break; } // not ascii
 
                     if (event.text.unicode == 8) { // Delete
-                        if (!text_area.content.empty() && text_area.cursor_index > 0) {
+                        if (text_area.selection_offset != 0) {
+                            std::size_t const selection_lower_bound = std::max(0, static_cast<int>(text_area.cursor_index) + std::min(0, text_area.selection_offset));
+                            std::size_t const selection_upper_bound = text_area.cursor_index + std::max(0, text_area.selection_offset);
+                            text_area.content.erase(
+                                std::begin(text_area.content) + selection_lower_bound,
+                                std::begin(text_area.content) + selection_upper_bound);
+
+                            if (text_area.selection_offset < 0) {
+                                text_area.cursor_index -= selection_upper_bound - selection_lower_bound;
+                            }
+
+                            text_area.selection_offset = 0;
+                        }
+
+                        else if (!text_area.content.empty() && text_area.cursor_index > 0) {
                             text_area.content.erase(--text_area.cursor_index, 1);
                         }
                     } 
                     else if (event.text.unicode == 127) { // Supr
-                        if (text_area.cursor_index < text_area.content.size()) {
+                        if (text_area.selection_offset != 0) {
+                            std::size_t const selection_lower_bound = std::max(0, static_cast<int>(text_area.cursor_index) + std::min(0, text_area.selection_offset));
+                            std::size_t const selection_upper_bound = text_area.cursor_index + std::max(0, text_area.selection_offset);
+                            text_area.content.erase(
+                                std::begin(text_area.content) + selection_lower_bound,
+                                std::begin(text_area.content) + selection_upper_bound);
+
+                            if (text_area.selection_offset < 0) {
+                                text_area.cursor_index -= selection_upper_bound - selection_lower_bound;
+                            }
+
+                            text_area.selection_offset = 0;
+                        }
+
+                        else if (text_area.cursor_index < text_area.content.size()) {
                             text_area.content.erase(text_area.cursor_index, 1);
                         }
                     } 
@@ -739,13 +811,32 @@ int main(int argc, char** argv) {
                             return c < 32 || c > 127; 
                         }), std::end(clipboard));
                         auto size = clipboard.size();
+
+                        if (text_area.selection_offset != 0) {
+                            std::size_t const selection_lower_bound = std::max(0, static_cast<int>(text_area.cursor_index) + std::min(0, text_area.selection_offset));
+                            std::size_t const selection_upper_bound = text_area.cursor_index + std::max(0, text_area.selection_offset);
+                            text_area.content.erase(
+                                std::begin(text_area.content) + selection_lower_bound,
+                                std::begin(text_area.content) + selection_upper_bound);
+
+                            if (text_area.selection_offset < 0) {
+                                text_area.cursor_index -= selection_upper_bound - selection_lower_bound;
+                            }
+
+                            text_area.selection_offset = 0;
+                        }
+
                         text_area.content.insert(text_area.cursor_index, std::move(clipboard));
                         text_area.cursor_index += size;
                         text_area.update();
                     }
 
                     if(event.key.control && event.key.code == sf::Keyboard::C) {
-                        // TODO: this
+                        std::size_t const selection_lower_bound = std::max(0, static_cast<int>(text_area.cursor_index) + std::min(0, text_area.selection_offset));
+                        std::size_t const selection_upper_bound = text_area.cursor_index + std::max(0, text_area.selection_offset);
+
+                        std::string selected_string = text_area.content.substr(selection_lower_bound, selection_upper_bound - selection_lower_bound);
+                        sf::Clipboard::setString(selected_string);
                     }
 
                     if (event.key.code == sf::Keyboard::Enter) {
@@ -761,7 +852,24 @@ int main(int argc, char** argv) {
                     else if(event.key.code == sf::Keyboard::Left) {
                         std::cout << "LEFT\n";
                         if (text_area.cursor_index > 0) {
-                            --text_area.cursor_index;
+                            if (event.key.shift) {
+                                ++text_area.selection_offset;
+                                --text_area.cursor_index;
+                            } 
+                            else if (text_area.selection_offset < 0) {
+                                text_area.cursor_index += text_area.selection_offset;
+                                text_area.selection_offset = 0;
+                            }
+                            else if (text_area.selection_offset > 0) {
+                                text_area.selection_offset = 0;
+                            }
+                            else {
+                                --text_area.cursor_index;
+                            }
+
+                            text_area.update();
+                        } else if (!event.key.shift) {
+                            text_area.selection_offset = 0;
                             text_area.update();
                         }
                     }
@@ -769,7 +877,33 @@ int main(int argc, char** argv) {
                     else if(event.key.code == sf::Keyboard::Right) {
                         std::cout << "RIGHT\n";
                         if (text_area.cursor_index < text_area.content.size()) {
-                            ++text_area.cursor_index;
+                            if (event.key.shift) {
+                                --text_area.selection_offset;
+                                ++text_area.cursor_index;
+                            } 
+                            else if (text_area.selection_offset > 0) {
+                                text_area.cursor_index += text_area.selection_offset;
+                                text_area.selection_offset = 0;
+                            }
+                            else if (text_area.selection_offset < 0) {
+                                text_area.selection_offset = 0;
+                            }
+                            else {
+                                ++text_area.cursor_index;
+                            }
+                            text_area.update();
+                        } else if (!event.key.shift) {
+                            text_area.selection_offset = 0;
+                            text_area.update();
+                        }
+                    }
+
+                    else if (event.key.code == sf::Keyboard::Tab) {
+                        auto res = parse_command(text_area.content);
+                        if (!res.predictions.empty()) {
+                            text_area.content += res.predictions[0];
+                            text_area.cursor_index = text_area.content.size();
+                            text_area.selection_offset = 0;
                             text_area.update();
                         }
                     }
