@@ -545,7 +545,8 @@ struct TextArea : sf::Drawable, sf::Transformable {
     TextArea(sf::Font& font, sf::String const& default_string, unsigned height, unsigned width) 
         : font{ font }, default_message{ default_string }
         , fancy_text{ sftk::TextBuilder{ font } << sftk::txt::size(height - 6) << sf::Color{ 100, 100, 100 } << default_message, sf::VertexBuffer::Usage::Dynamic }
-        , box({ static_cast<float>(width), static_cast<float>(height) }) {
+        , box({ static_cast<float>(width), static_cast<float>(height) })
+        , cursor({ font.getGlyph('X', height - 6, false, 0).bounds.width, 2 }) {
 
         box.setFillColor(sf::Color::Black);
         box.setOutlineColor(sf::Color::White);
@@ -553,6 +554,9 @@ struct TextArea : sf::Drawable, sf::Transformable {
 
         fancy_text.setOrigin(0, fancy_text.get_local_bounds().height / 2.f);
         fancy_text.setPosition(3, height / 2.f);
+
+        cursor.setFillColor(sf::Color::White);
+        cursor.setPosition(3, 17);
     }
 
     void update() {
@@ -563,6 +567,8 @@ struct TextArea : sf::Drawable, sf::Transformable {
                 << default_message
             );
 
+            cursor.setPosition(3, 17);
+
         }
         else {
             auto res = parse_command(content);
@@ -570,6 +576,10 @@ struct TextArea : sf::Drawable, sf::Transformable {
 
             auto builder = sftk::TextBuilder{ font } << sftk::txt::size(box.getSize().y - 6);
             bool is_red{ false };
+
+            float cursor_x{ 3 };
+            std::cout << "INDEX: " << cursor_index << '\n';
+
             for(std::size_t i{ 0 }; i < content.size(); ++i) {
                 bool is_in_error = res.index_of_error && i >= *res.index_of_error;
                 if (is_in_error && !is_red) {
@@ -578,10 +588,24 @@ struct TextArea : sf::Drawable, sf::Transformable {
                     builder.set_fill_color(sf::Color::White);
                 }
                 builder.append(content[i]);
+
+                if(i + 1 == cursor_index) {
+                    cursor_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
+                }
             }
+
+            if (cursor_index == 0) {
+                cursor_x = 3; 
+            }
+            else if (cursor_index >= content.size()) {
+                cursor_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
+                cursor_index = content.size();
+            } 
             fancy_text.set_text(std::move(builder)
                 << sf::Color{ 100, 100, 100 }
                 << pred);
+
+            cursor.setPosition(cursor_x, 17);
         }
     }
 
@@ -593,6 +617,7 @@ struct TextArea : sf::Drawable, sf::Transformable {
         //target.draw(prediction, states);
         //target.draw(text, states);
         target.draw(fancy_text, states);
+        target.draw(cursor, states);
     }
 
 
@@ -601,131 +626,150 @@ struct TextArea : sf::Drawable, sf::Transformable {
     std::string content;
     sftk::FancyText fancy_text;
     sf::RectangleShape box;
+    sf::RectangleShape cursor;
+    std::size_t cursor_index{ 0 };
 };
 
 int main(int argc, char** argv) {
-    try {
-        /* --------------------------
-         * INITIALISATION
-         * --------------------------
-         */
-        /* Connect to server */ 
-        /*
-        unsigned short const default_port = 48622;
-        unsigned short const port = argc >= 2 ? std::stoi(argv[1]) : default_port;
-        auto socket = std::make_unique<sf::TcpSocket>();
-        if (socket->connect("127.0.0.1", port) != sf::Socket::Done) {
-            std::cerr << "Couldn't connect to port " << port << '\n';
-            return 1;
-        }
-        socket->setBlocking(false);
+    /* --------------------------
+        * INITIALISATION
+        * --------------------------
         */
-        /*
-        std::cout << 
-            packet_to_string(pong::packet::ChangeUsername{ "Hazurl" }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::UsernameResponse{ pong::packet::UsernameResponse::InvalidCharacters }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::LobbyInfo{ {"Hazurl", "Zoid", "Tintin"}, {0, 2, 3, 5} }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::NewUser{ "Hazurl" }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::OldUser{ "Hazurl" }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::NewRoom{ 1 }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::OldRoom{ 2 }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::EnterRoom{ 5 }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::CreateRoom{}).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::EnterRoomResponse{ pong::packet::EnterRoomResponse::InvalidID }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::RoomInfo{ "Hazurl", "Zoid", {"Tintin, Ziliq"} }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::LeaveRoom{}).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::GameState{ pong::Ball{{126, 150}, {10.123456789, -10}}, pong::Pad{188, -5.82}, pong::Pad{25, 12} }).toAnsiString() << '\n' <<
-            packet_to_string(pong::packet::Input{ pong::Input::Down }).toAnsiString() << '\n';
+    /* Connect to server */ 
+    /*
+    unsigned short const default_port = 48622;
+    unsigned short const port = argc >= 2 ? std::stoi(argv[1]) : default_port;
+    auto socket = std::make_unique<sf::TcpSocket>();
+    if (socket->connect("127.0.0.1", port) != sf::Socket::Done) {
+        std::cerr << "Couldn't connect to port " << port << '\n';
+        return 1;
+    }
+    socket->setBlocking(false);
+    */
+    /*
+    std::cout << 
+        packet_to_string(pong::packet::ChangeUsername{ "Hazurl" }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::UsernameResponse{ pong::packet::UsernameResponse::InvalidCharacters }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::LobbyInfo{ {"Hazurl", "Zoid", "Tintin"}, {0, 2, 3, 5} }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::NewUser{ "Hazurl" }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::OldUser{ "Hazurl" }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::NewRoom{ 1 }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::OldRoom{ 2 }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::EnterRoom{ 5 }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::CreateRoom{}).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::EnterRoomResponse{ pong::packet::EnterRoomResponse::InvalidID }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::RoomInfo{ "Hazurl", "Zoid", {"Tintin, Ziliq"} }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::LeaveRoom{}).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::GameState{ pong::Ball{{126, 150}, {10.123456789, -10}}, pong::Pad{188, -5.82}, pong::Pad{25, 12} }).toAnsiString() << '\n' <<
+        packet_to_string(pong::packet::Input{ pong::Input::Down }).toAnsiString() << '\n';
+    */
+    
+    /* Open windows */
+    sf::RenderWindow window(sf::VideoMode(800, 600), "SFML Multiplayer pong");
+    /* Load assets */
+    sf::Font font;
+    if (!font.loadFromFile("../assets/neoletters.ttf")) {
+        std::cout << "Couldn't load font '../assets/neoletters.ttf'\n";
+        std::exit(1);
+    }
+
+    sf::Clock clock;
+
+    TextArea text_area(font, "Type a packet to send it", 20, 780);
+    text_area.setPosition({8, 568});
+
+    /* --------------------------
+        * MAIN LOOP
+        * --------------------------
         */
-        
-        /* Open windows */
-        sf::RenderWindow window(sf::VideoMode(800, 600), "SFML Multiplayer pong");
-        /* Load assets */
-        sf::Font font;
-        if (!font.loadFromFile("../assets/neoletters.ttf")) {
-            std::cout << "Couldn't load font '../assets/neoletters.ttf'\n";
-            std::exit(1);
-        }
+    while (window.isOpen()) {
+        // Process events
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            switch(event.type) {
+                case sf::Event::Closed: {
+                    window.close();
+                    break;
+                } 
 
-        sf::Clock clock;
+                case sf::Event::MouseButtonReleased: {
+                    if (event.mouseButton.button == sf::Mouse::Button::Left) {
 
-        TextArea text_area(font, "Type a packet to send it", 20, 780);
-        text_area.setPosition({8, 568});
-
-        /* --------------------------
-         * MAIN LOOP
-         * --------------------------
-         */
-        while (window.isOpen()) {
-            // Process events
-            sf::Event event;
-            while (window.pollEvent(event)) {
-                switch(event.type) {
-                    case sf::Event::Closed: {
-                        window.close();
-                        break;
-                    } 
-
-                    case sf::Event::MouseButtonReleased: {
-                        if (event.mouseButton.button == sf::Mouse::Button::Left) {
-
-                        }
-
-                        break;
                     }
 
-                    case sf::Event::TextEntered: {
-                        //std::cout << "TextEntered: " << event.text.unicode << '\n';
-
-                        if (event.text.unicode >= 128) { break; } // not ascii
-
-                        if (event.text.unicode == 8) { // Delete
-                            if (!text_area.content.empty()) {
-                                text_area.content.pop_back();
-                            }
-                        } 
-                        else {
-                            if (event.text.unicode < 32 || event.text.unicode > 127) {
-                                break;
-                            }
-                            text_area.content.push_back(event.text.unicode);
-                        }
-
-                        text_area.update();
-
-                        //parse_terms(text_area.text.getString().toAnsiString());
-
-                        break;
-                    }
-
-                    case sf::Event::KeyPressed: {
-
-                        if (event.key.code == sf::Keyboard::Enter) {
-                            auto res = parse_command(text_area.content);
-                            std::cout << (res.command ? std::visit([] (auto const& v) { return packet_to_string(v).toAnsiString(); }, *res.command) : "Not found") << '\n';
-                            for(auto const& p : res.predictions) {
-                                std::cout << "> " << p << '\n';
-                            }
-                            if(res.index_of_error) {
-                                std::cout << "# " << *res.index_of_error << '\n';
-                            }
-                        }
-
-                        break;
-                    }
-
-                    default: { break; }
+                    break;
                 }
+
+                case sf::Event::TextEntered: {
+                    //std::cout << "TextEntered: " << event.text.unicode << '\n';
+
+                    if (event.text.unicode >= 128) { break; } // not ascii
+
+                    if (event.text.unicode == 8) { // Delete
+                        if (!text_area.content.empty() && text_area.cursor_index > 0) {
+                            text_area.content.erase(--text_area.cursor_index, 1);
+                        }
+                    } 
+                    else if (event.text.unicode == 127) { // Supr
+                        if (text_area.cursor_index < text_area.content.size()) {
+                            text_area.content.erase(text_area.cursor_index, 1);
+                        }
+                    } 
+                    else {
+                        if (event.text.unicode < 32 || event.text.unicode > 127) {
+                            break;
+                        }
+                        text_area.content.insert(text_area.cursor_index, 1, event.text.unicode);
+                        ++text_area.cursor_index;
+                    }
+
+                    text_area.update();
+
+                    //parse_terms(text_area.text.getString().toAnsiString());
+
+                    break;
+                }
+
+                case sf::Event::KeyPressed: {
+
+                    if (event.key.code == sf::Keyboard::Enter) {
+                        auto res = parse_command(text_area.content);
+                        std::cout << (res.command ? std::visit([] (auto const& v) { return packet_to_string(v).toAnsiString(); }, *res.command) : "Not found") << '\n';
+                        for(auto const& p : res.predictions) {
+                            std::cout << "> " << p << '\n';
+                        }
+                        if(res.index_of_error) {
+                            std::cout << "# " << *res.index_of_error << '\n';
+                        }
+                    } 
+                    else if(event.key.code == sf::Keyboard::Left) {
+                        std::cout << "LEFT\n";
+                        if (text_area.cursor_index > 0) {
+                            --text_area.cursor_index;
+                            text_area.update();
+                        }
+                    }
+
+                    else if(event.key.code == sf::Keyboard::Right) {
+                        std::cout << "RIGHT\n";
+                        if (text_area.cursor_index < text_area.content.size()) {
+                            ++text_area.cursor_index;
+                            text_area.update();
+                        }
+                    }
+
+                    break;
+                }
+
+                default: { break; }
             }
-
-
-            window.clear(sf::Color::Black);
-
-            window.draw(text_area);
-
-            window.display();
         }
-    } catch(std::exception const& e) {
-        std::cerr << "Unexpected exception: " << e.what() << '\n';
+
+
+        window.clear(sf::Color::Black);
+
+        window.draw(text_area);
+
+        window.display();
     }
 }
