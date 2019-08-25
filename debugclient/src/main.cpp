@@ -493,6 +493,7 @@ CommandParsingResult parse_game_state(std::string_view const& str, std::size_t& 
 CommandParsingResult parse_command(std::string_view const& str) {
     std::size_t idx{ 0 };
 
+    skip_spaces(str, idx);
     auto name = parse_ident(str, idx);
     if (!name) {
         return CommandParsingResult {
