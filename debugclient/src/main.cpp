@@ -728,9 +728,24 @@ int main(int argc, char** argv) {
                     //parse_terms(text_area.text.getString().toAnsiString());
 
                     break;
-                }
+    }
 
                 case sf::Event::KeyPressed: {
+
+                    if(event.key.control && event.key.code == sf::Keyboard::V) {
+                        auto clipboard = sf::Clipboard::getString().toAnsiString();
+                        clipboard.erase(std::remove_if(std::begin(clipboard), std::end(clipboard), [] (char c) { 
+                            return c < 32 || c > 127; 
+                        }), std::end(clipboard));
+                        auto size = clipboard.size();
+                        text_area.content.insert(text_area.cursor_index, std::move(clipboard));
+                        text_area.cursor_index += size;
+                        text_area.update();
+                    }
+
+                    if(event.key.control && event.key.code == sf::Keyboard::C) {
+                        // TODO: this
+                    }
 
                     if (event.key.code == sf::Keyboard::Enter) {
                         auto res = parse_command(text_area.content);
