@@ -831,12 +831,25 @@ int main(int argc, char** argv) {
                         text_area.update();
                     }
 
-                    if(event.key.control && event.key.code == sf::Keyboard::C) {
+                    if(event.key.control && (event.key.code == sf::Keyboard::C || event.key.code == sf::Keyboard::X)) {
                         std::size_t const selection_lower_bound = std::max(0, static_cast<int>(text_area.cursor_index) + std::min(0, text_area.selection_offset));
                         std::size_t const selection_upper_bound = text_area.cursor_index + std::max(0, text_area.selection_offset);
 
                         std::string selected_string = text_area.content.substr(selection_lower_bound, selection_upper_bound - selection_lower_bound);
                         sf::Clipboard::setString(selected_string);
+
+                        if (event.key.code == sf::Keyboard::X) {
+                            text_area.content.erase(
+                                std::begin(text_area.content) + selection_lower_bound,
+                                std::begin(text_area.content) + selection_upper_bound);
+
+                            if (text_area.selection_offset < 0) {
+                                text_area.cursor_index -= selection_upper_bound - selection_lower_bound;
+                            }
+
+                            text_area.selection_offset = 0;
+                            text_area.update();
+                        }
                     }
 
                     if (event.key.code == sf::Keyboard::Enter) {
