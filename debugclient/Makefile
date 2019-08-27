@@ -91,7 +91,7 @@ STATIC_LINK_FLAG := rcs
 
 # Include path
 # Must be use with -I
-INC_FLAG := -I $(INC_FOLDER) -I ../engine/include -I ./lib -I ./lib/SFML-Toolkit/include
+INC_FLAG := -I $(INC_FOLDER) -I ../engine/include -I ./lib -I ./lib/SFML-Toolkit/include -I ./lib/parser/include
 
 #####
 ##### LIBRARY
