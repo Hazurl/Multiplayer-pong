@@ -99,6 +99,7 @@ struct ChangeUsername {
 
 sf::Packet& operator >> (sf::Packet& p, ChangeUsername& username);
 sf::Packet& operator << (sf::Packet& p, ChangeUsername const& username);
+bool operator == (ChangeUsername const& lhs, ChangeUsername const& rhs);
 
 struct UsernameResponse {
     enum Result {
@@ -113,6 +114,7 @@ struct UsernameResponse {
 
 sf::Packet& operator >> (sf::Packet& p, UsernameResponse& username);
 sf::Packet& operator << (sf::Packet& p, UsernameResponse const& username);
+bool operator == (UsernameResponse const& lhs, UsernameResponse const& rhs);
 
 struct LobbyInfo {
     std::vector<std::string> users;
@@ -121,6 +123,7 @@ struct LobbyInfo {
 
 sf::Packet& operator >> (sf::Packet& p, LobbyInfo& lobby);
 sf::Packet& operator << (sf::Packet& p, LobbyInfo const& lobby);
+bool operator == (LobbyInfo const& lhs, LobbyInfo const& rhs);
 
 struct NewUser {
     std::string username;
@@ -128,6 +131,7 @@ struct NewUser {
 
 sf::Packet& operator >> (sf::Packet& p, NewUser& username);
 sf::Packet& operator << (sf::Packet& p, NewUser const& username);
+bool operator == (NewUser const& lhs, NewUser const& rhs);
 
 struct OldUser {
     std::string username;
@@ -135,6 +139,7 @@ struct OldUser {
 
 sf::Packet& operator >> (sf::Packet& p, OldUser& username);
 sf::Packet& operator << (sf::Packet& p, OldUser const& username);
+bool operator == (OldUser const& lhs, OldUser const& rhs);
 
 struct NewRoom {
     int id;
@@ -142,6 +147,7 @@ struct NewRoom {
 
 sf::Packet& operator >> (sf::Packet& p, NewRoom& username);
 sf::Packet& operator << (sf::Packet& p, NewRoom const& username);
+bool operator == (NewRoom const& lhs, NewRoom const& rhs);
 
 struct OldRoom {
     int id;
@@ -149,6 +155,7 @@ struct OldRoom {
 
 sf::Packet& operator >> (sf::Packet& p, OldRoom& username);
 sf::Packet& operator << (sf::Packet& p, OldRoom const& username);
+bool operator == (OldRoom const& lhs, OldRoom const& rhs);
 
 struct EnterRoom {
     int id;
@@ -156,11 +163,13 @@ struct EnterRoom {
 
 sf::Packet& operator >> (sf::Packet& p, EnterRoom& username);
 sf::Packet& operator << (sf::Packet& p, EnterRoom const& username);
+bool operator == (EnterRoom const& lhs, EnterRoom const& rhs);
 
 struct CreateRoom {};
 
 sf::Packet& operator >> (sf::Packet& p, CreateRoom& username);
 sf::Packet& operator << (sf::Packet& p, CreateRoom const& username);
+bool operator == (CreateRoom const& lhs, CreateRoom const& rhs);
 
 struct EnterRoomResponse {
     enum Result {
@@ -174,6 +183,7 @@ struct EnterRoomResponse {
 
 sf::Packet& operator >> (sf::Packet& p, EnterRoomResponse& username);
 sf::Packet& operator << (sf::Packet& p, EnterRoomResponse const& username);
+bool operator == (EnterRoomResponse const& lhs, EnterRoomResponse const& rhs);
 
 struct RoomInfo {
     std::string left_player, right_player;
@@ -182,11 +192,13 @@ struct RoomInfo {
 
 sf::Packet& operator >> (sf::Packet& p, RoomInfo& username);
 sf::Packet& operator << (sf::Packet& p, RoomInfo const& username);
+bool operator == (RoomInfo const& lhs, RoomInfo const& rhs);
 
 struct LeaveRoom {};
 
 sf::Packet& operator >> (sf::Packet& p, LeaveRoom& username);
 sf::Packet& operator << (sf::Packet& p, LeaveRoom const& username);
+bool operator == (LeaveRoom const& lhs, LeaveRoom const& rhs);
 
 
 struct GameState {
@@ -197,6 +209,7 @@ struct GameState {
 
 sf::Packet& operator >> (sf::Packet& p, GameState& username);
 sf::Packet& operator << (sf::Packet& p, GameState const& username);
+bool operator == (GameState const& lhs, GameState const& rhs);
 
 struct Input {
     ::pong::Input input;
@@ -204,6 +217,7 @@ struct Input {
 
 sf::Packet& operator >> (sf::Packet& p, Input& username);
 sf::Packet& operator << (sf::Packet& p, Input const& username);
+bool operator == (Input const& lhs, Input const& rhs);
 
 }
 

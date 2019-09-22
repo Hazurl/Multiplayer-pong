@@ -25,12 +25,16 @@ struct Pad {
     void update(float dt, float board_height);
 };
 
+bool operator==(Pad const& lhs, Pad const& rhs);
+
 struct Ball {
     sf::Vector2f position;
     sf::Vector2f speed;
 
     CollisionEvent update(float dt, float pad_left, float pad_right, sf::Vector2f const& boundaries, float padding, float pad_height, float pad_width, float ball_radius);
 };
+
+bool operator==(Ball const& lhs, Ball const& rhs);
 
 /* 
            Server     Client

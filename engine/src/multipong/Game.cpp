@@ -100,8 +100,16 @@ sf::Packet& operator <<(sf::Packet& packet, Ball const& ball) {
     return packet << ball.speed   .x << ball.speed   .y;
 }
 
+bool operator==(Ball const& lhs, Ball const& rhs) {
+    return lhs.position == rhs.position && lhs.speed == rhs.speed;
+}
+
 sf::Packet& operator <<(sf::Packet& packet, Pad const& pad) {
     return packet << pad.y << pad.speed;
+}
+
+bool operator==(Pad const& lhs, Pad const& rhs) {
+    return lhs.y == rhs.y && lhs.speed == rhs.speed;
 }
 
 sf::Packet& operator <<(sf::Packet& packet, Input input) {
