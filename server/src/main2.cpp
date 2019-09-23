@@ -14,19 +14,22 @@
 #include <multipong/Game.hpp>
 #include <multipong/Packets.hpp>
 
-#include <ServerState.hpp>
+#include <pong/server/State.hpp>
+#include <pong/server/NewUser.hpp>
+#include <pong/server/MainLobby.hpp>
+#include <pong/server/Room.hpp>
 
 void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::TcpSocket>>& clients, std::atomic_bool& stop) {
-    std::vector<std::unique_ptr<RoomState>> rooms;
-    MainLobbyState main_lobby{ rooms };
-    NewUserState new_users{ main_lobby };
+    std::vector<std::unique_ptr<pong::server::RoomState>> rooms;
+    pong::server::MainLobbyState main_lobby{ rooms };
+    pong::server::NewUserState new_users{ main_lobby };
 
     while(!stop) {
         {
             std::lock_guard lk{ clients_mutex };
 
             for(auto& client : clients) {
-                new_users.create(User{ std::move(client) });
+                new_users.create(std::move(client));
             }
 
             clients.clear();
@@ -52,7 +55,7 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
 
 int main() {
     sf::TcpListener listener;
-    listener.listen(48622);
+    listener.listen(48624);
 
     std::mutex clients_mutex;
     std::vector<std::unique_ptr<sf::TcpSocket>> clients;

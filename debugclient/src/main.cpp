@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
         */
     /* Connect to server */ 
     
-    unsigned short const default_port = 48622;
+    unsigned short const default_port = 48624;
     unsigned short const port = argc >= 2 ? std::stoi(argv[1]) : default_port;
     auto socket = std::make_unique<sf::TcpSocket>();
     if (socket->connect("127.0.0.1", port) != sf::Socket::Done) {
