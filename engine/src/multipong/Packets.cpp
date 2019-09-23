@@ -246,4 +246,120 @@ bool operator==(Input const& lhs, Input const& rhs) {
     return lhs.input == rhs.input;
 }
 
+
+
+
+sf::Packet& operator >> (sf::Packet& p, GamePacket& game_packet) {
+    PacketID id;
+    p >> id;
+    switch(id) {
+        case PacketID::ChangeUsername: {
+            ChangeUsername tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::UsernameResponse: {
+            UsernameResponse tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::EnterRoom: {
+            EnterRoom tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::EnterRoomResponse: {
+            EnterRoomResponse tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::LeaveRoom: {
+            LeaveRoom tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::Input: {
+            Input tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::GameState: {
+            GameState tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::NewUser: {
+            NewUser tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;      
+        }
+
+        case PacketID::OldUser: {
+            OldUser tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::CreateRoom: {
+            CreateRoom tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::NewRoom: {
+            NewRoom tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::OldRoom: {
+            OldRoom tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::LobbyInfo: {
+            LobbyInfo tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+
+        case PacketID::RoomInfo: {
+            RoomInfo tmp;
+            p >> tmp;
+            game_packet = std::move(tmp);
+            break;
+        }
+    }
+
+    return p;
+}
+
+sf::Packet& operator << (sf::Packet& p, GamePacket const& game_packet) {
+    return std::visit([&p] (auto const& value) -> decltype(auto) {
+        return p << value;
+    }, game_packet);
+}
+
+
 }
