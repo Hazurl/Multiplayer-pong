@@ -2,6 +2,8 @@
 
 #include <dbg_pckt/Parser.hpp>
 
+#include <cassert>
+
 namespace dbg_pckt::gui {
 
 CommandTextArea::CommandTextArea(sf::Font& font, unsigned width, unsigned height, std::string _default_message) 
@@ -27,34 +29,40 @@ void CommandTextArea::write_prediction() {
     auto res = parser::parse_command(content);
     auto prediction = res.is_error() ? current_prediction(res.error()) : "";
     write(prediction);
+    current_prediction_index = 0;
 }
 
 std::string CommandTextArea::current_prediction(std::vector<std::string> const& predictions) const {
     return predictions.empty() ? "" : predictions[ current_prediction_index % predictions.size() ]; 
 }
 
-sftk::TextBuilder CommandTextArea::generate_text() {
+TextArea::GeneratedText CommandTextArea::generate_text() {
     auto const& content = get_content();
+
+    TextArea::GeneratedText generated_text{
+        sftk::TextBuilder{ get_font() } << sftk::txt::size(get_font_size()),
+        0, 0, 0
+    };
+
+    auto& builder = generated_text.builder;
     
     if(content.empty() && !is_focus()) {
-        return 
-            sftk::TextBuilder{ get_font() }
-                << sftk::txt::size(get_font_size())
-                << sf::Color{ 100, 100, 100 }
+        builder << sf::Color{ 100, 100, 100 }
                 << default_message;
+
+        return generated_text;
     }
 
     auto res = parser::parse_command(content);
-    auto builder = sftk::TextBuilder{ get_font() } << sftk::txt::size(get_font_size());
     auto prediction = res.is_error() ? current_prediction(res.error()) : "";
 
     //bool is_red{ false };
     bool is_selected{ false };
-/*
-    float cursor_x{ 3 };
-    float selection_lower_bound_x{ 3 };
-    float selection_upper_bound_x{ 3 };
-*/
+
+    assert(get_cursor_index() <= content.size());
+    assert(get_left_selection_index() <= content.size());
+    assert(get_right_selection_index() <= content.size());
+
     for(std::size_t i{ 0 }; i < content.size(); ++i) {
         bool is_i_in_error = false;
         bool is_i_in_selection = is_in_selection(i);
@@ -77,40 +85,24 @@ sftk::TextBuilder CommandTextArea::generate_text() {
             is_selected = false;
         }
         builder.append(content[i]);
-/*
-        if(i + 1 == cursor_index) {
-            cursor_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
+
+        if (get_cursor_index() == i + 1) {
+            generated_text.cursor_x = builder.get_current_position().x;
         }
 
-        if(i + 1 == selection_lower_bound) {
-            selection_lower_bound_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
+        if (get_left_selection_index() == i + 1) {
+            generated_text.selection_left = builder.get_current_position().x;
         }
 
-        if(i + 1 == selection_upper_bound) {
-            selection_upper_bound_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
-        }*/
+        if (get_right_selection_index() == i + 1) {
+            generated_text.selection_right = builder.get_current_position().x;
+        }
     }
-/*
-    if (cursor_index >= content.size()) {
-        cursor_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
-        cursor_index = content.size();
-    } 
 
-    if (selection_lower_bound >= content.size()) {
-        selection_lower_bound_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
-    } 
+    builder << sf::Color{ 100, 100, 100 }
+            << prediction;
 
-    if (selection_upper_bound >= content.size()) {
-        selection_upper_bound_x = fancy_text.getTransform().transformPoint(builder.get_current_position()).x;
-    } 
-*/
-    return std::move(builder)
-        << sf::Color{ 100, 100, 100 }
-        << prediction;
-/*
-    cursor.setPosition(cursor_x, 17);
-    selection.setSize({ selection_upper_bound_x == selection_lower_bound_x ? 0 : selection_upper_bound_x - selection_lower_bound_x + 1, selection.getSize().y });
-    selection.setPosition(selection_lower_bound_x - 1, 0);*/
+    return generated_text;
 }
 
 

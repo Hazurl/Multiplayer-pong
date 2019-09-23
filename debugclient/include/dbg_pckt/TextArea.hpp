@@ -41,10 +41,19 @@ public:
 
     void set_focus(bool enable);
 
+    std::string const& get_content() const;
+
 protected:
 
+    struct GeneratedText {
+        sftk::TextBuilder builder;
+        float cursor_x;
+        float selection_left;
+        float selection_right;
+    };
+
     void force_generation();
-    virtual sftk::TextBuilder generate_text();
+    virtual GeneratedText generate_text();
 
     sf::Font const& get_font() const; 
     float get_font_size() const; 
@@ -52,7 +61,9 @@ protected:
     bool is_in_selection(std::size_t cursor) const;
     bool is_focus() const;
 
-    std::string const& get_content() const;
+    std::size_t get_cursor_index() const;
+    std::size_t get_left_selection_index() const;
+    std::size_t get_right_selection_index() const;
 
 private:
 

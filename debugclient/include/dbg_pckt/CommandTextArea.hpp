@@ -17,7 +17,7 @@ private:
 
     std::string current_prediction(std::vector<std::string> const& predictions) const;
 
-    sftk::TextBuilder generate_text() override;
+    TextArea::GeneratedText generate_text() override;
 
     std::string default_message;
     std::size_t current_prediction_index;
