@@ -71,9 +71,9 @@ EXT_INC_FILE = .hpp
 header-of = $(1:%$(EXT_SRC_FILE)=%$(EXT_INC_FILE))
 
 # Relative to $(SRC_FOLDER)
-SRC_EXCLUDE_FILE := 
+SRC_EXCLUDE_FILE :=
 # All files that are not use for libraries, don't add src/
-SRC_MAINS := main.cpp
+SRC_MAINS := main.cpp test_parser.cpp
 # The main file to use (must be in $(SRC_MAINS))
 SRC_MAIN := main.cpp
 
@@ -82,7 +82,7 @@ SRC_MAIN := main.cpp
 #####
 
 OPTI := -g
-FLAGS := -std=c++17  $(OPTI) -pthread
+FLAGS := -std=c++2a  $(OPTI) -pthread
 FLAGS += -Wall -Wextra -Wno-pmf-conversions -Wshadow -Wpedantic -Wduplicated-cond -Wduplicated-branches -Wlogical-op 
 FLAGS += -Wnull-dereference -Wuseless-cast -Wold-style-cast -Wcast-align -Wcast-qual -Wno-missing-field-initializers 
 TEST_FLAGS := -fsanitize=address -fsanitize=pointer-subtract -fsanitize=pointer-compare -fsanitize=leak -fsanitize=undefined -fuse-ld=gold
@@ -91,7 +91,7 @@ STATIC_LINK_FLAG := rcs
 
 # Include path
 # Must be use with -I
-INC_FLAG := -I $(INC_FOLDER) -I ../engine/include -I ./lib -I ./lib/SFML-Toolkit/include -I ./lib/parser/include
+INC_FLAG := -I $(INC_FOLDER) -I ../engine/include -I ./lib -I ./lib/SFML-Toolkit/include -I ./lib/parser/include -I ./lib/parser/lib/
 
 #####
 ##### LIBRARY
@@ -188,7 +188,7 @@ endef
 
 _SRC_MAINS := $(addprefix $(SRC_FOLDER)/,$(SRC_MAINS))
 # All sources files not main
-_SRC_FILES := $(filter-out $(_SRC_MAINS),$(shell find $(SRC_FOLDER) -name '*$(EXT_SRC_FILE)'))
+_SRC_FILES := $(filter-out $(_SRC_MAINS) $(SRC_FOLDER)/$(SRC_EXCLUDE_FILE),$(shell find $(SRC_FOLDER) -name '*$(EXT_SRC_FILE)'))
 
 #####
 ##### DIRECTORIES
