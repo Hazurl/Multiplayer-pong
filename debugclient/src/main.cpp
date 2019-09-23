@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
         * --------------------------
         */
     /* Connect to server */ 
-    /*
+    
     unsigned short const default_port = 48622;
     unsigned short const port = argc >= 2 ? std::stoi(argv[1]) : default_port;
     auto socket = std::make_unique<sf::TcpSocket>();
@@ -38,7 +38,6 @@ int main(int argc, char** argv) {
         return 1;
     }
     socket->setBlocking(false);
-    */
     
     /* Open windows */
     sf::RenderWindow window(sf::VideoMode(800, 600), "SFML Multiplayer pong");
@@ -50,6 +49,8 @@ int main(int argc, char** argv) {
     }
 
     sf::Clock clock;
+    std::deque<sf::Packet> packets_to_send;
+    sf::Packet receiving_packet;
 
     dbg_pckt::gui::CommandTextArea text_area(font, 780, 20, "Type a packet to send it");
     text_area.setPosition({ 8, 568 });
@@ -111,6 +112,9 @@ int main(int argc, char** argv) {
                         auto res = dbg_pckt::parser::parse_command(content);
                         if (res.is_success()) {
                             std::cout << wpr::describe(res.success()) << '\n';
+                            sf::Packet packet;
+                            std::visit([&packet] (auto&& value) { packet << value; }, res.success().as_variant());
+                            packets_to_send.push_back(packet);
                         } else {
                             std::cout << "ERROR\n";
                         }
@@ -146,6 +150,52 @@ int main(int argc, char** argv) {
                 }
 
                 default: { break; }
+            }
+        }
+
+        if (!packets_to_send.empty()) {
+            std::cout << packets_to_send.size() << " packets remaining to send\n";
+            auto& p = packets_to_send.front();
+            switch(socket->send(p)) {
+                case sf::Socket::Done: {
+                    packets_to_send.pop_front();
+                    std::cout << "packet successfully sent\n";
+                    break;
+                }
+                case sf::Socket::Disconnected: {
+                    packets_to_send.clear();
+                    break;
+                }
+
+                case sf::Socket::Error: {
+                    window.close();
+                    std::cerr << "Internal error on socket when sending packet...\n";
+                    break;
+                }
+
+                default: {
+                    break;
+                }
+            }
+        }
+
+        switch(socket->receive(receiving_packet)) {
+            case sf::Socket::Done: {
+                pong::packet::GamePacket game_packet;
+                receiving_packet >> game_packet;
+                std::cout << "Received: " << std::visit([] (auto&& value) { return dbg_pckt::packet_to_string(value); }, game_packet) << '\n';
+                break;
+            }
+
+            case sf::Socket::Disconnected:
+            case sf::Socket::Error: {
+                window.close();
+                std::cerr << "Internal error on socket when receiving packet...\n";
+                break;
+            }
+
+            default: {
+                break;
             }
         }
 
