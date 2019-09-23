@@ -60,17 +60,20 @@ T& getter(C& c) {
     return c.*field;
 }
 
+struct User {
+    std::unique_ptr<sf::TcpSocket> socket;
+    std::vector<sf::Packet> packets {};
+};
+
 template<typename T>
 struct UserData {
-    std::unique_ptr<sf::TcpSocket> socket;
+    User user;
     T data;
-    std::vector<sf::Packet> packets;
 };
 
 template<>
 struct UserData<void> {
-    std::unique_ptr<sf::TcpSocket> socket;
-    std::vector<sf::Packet> packets;
+    User user;
 };
 
 struct Idle {};
@@ -80,16 +83,16 @@ struct Abord {};
 using Action = std::variant<Idle, Leave, Abord>;
 
 template<typename S, typename T>
-Action change_state(S& state, std::unique_ptr<sf::TcpSocket>& socket, T&& data) {
-    return [&socket, &state, _data = std::forward<T>(data)] () mutable {
-        state.create(std::move(socket), std::move(_data));
+Action change_state(S& state, User& user, T&& data) {
+    return [&user, &state, _data = std::forward<T>(data)] () mutable {
+        state.create(std::move(user), std::move(_data));
     };
 }
 
 template<typename S, typename T>
-Action change_state(S& state, std::unique_ptr<sf::TcpSocket>& socket) {
-    return [&socket, &state] () mutable {
-        state.create(std::move(socket));
+Action change_state(S& state, User& user) {
+    return [&user, &state] () mutable {
+        state.create(std::move(user));
     };
 }
 
@@ -134,7 +137,8 @@ struct State {
     void send_packets() {
         std::size_t end{ users.size() };
         for(std::size_t i{ 0 }; i < end; ++i) {
-            auto& user = users[i];
+            auto& user_data = users[i];
+            auto& user = user_data.user;
             auto& socket = *user.socket;
             auto& packets = user.packets;
 
@@ -194,7 +198,8 @@ struct State {
     void receive_packets() {
         std::size_t end{ users.size() };
         for(std::size_t i{ 0 }; i < end; ++i) {
-            auto& user = users[i];
+            auto& user_data = users[i];
+            auto& user = user_data.user;
             auto& socket = *user.socket;
 
             sf::Packet packet;
@@ -207,10 +212,10 @@ struct State {
                     pong::packet::PacketID packet_id; 
                     packet >> packet_id;
                     if (receivers.count(packet_id)) {
-                        auto action = (static_cast<C*>(this)->*receivers[packet_id])(user, packet);
+                        auto action = (static_cast<C*>(this)->*receivers[packet_id])(user_data, packet);
                         if (auto* finalize_leave = std::get_if<Leave>(&action)) {
                             if constexpr (std::experimental::is_detected_exact_v<on_user_leave_t, decltype_on_user_leave, C>) {
-                                static_cast<C*>(this)->on_user_leave(user);
+                                static_cast<C*>(this)->on_user_leave(user_data);
                             }
                             (*finalize_leave)();
                         }
@@ -251,7 +256,7 @@ struct State {
             if constexpr (std::experimental::is_detected_exact_v<on_user_leave_t, decltype_on_user_leave, C>) {
                 auto current = first;
                 for(; current != last; ++current) {
-                    if (current->socket) {
+                    if (current->user.socket) {
                         static_cast<C*>(this)->on_user_leave(*current);
                     }
                 }
@@ -279,10 +284,11 @@ struct State {
         }
     }
 
-    std::enable_if_t<! std::is_same_v<void, user_personal_data_t>, 
-    user_handle_t> create(std::unique_ptr<sf::TcpSocket> socket, T&& data) {
-        assert(socket && "Socket must not be null");
-        users.push_back({ std::move(socket), std::forward<T>(data) });
+    template<typename _T = user_personal_data_t>
+    std::enable_if_t<!std::is_same_v<void, _T> && std::is_same_v<_T, user_personal_data_t>, 
+    user_handle_t> create(User user, _T&& data) {
+        assert(user.socket && "Socket must not be null");
+        users.push_back({ std::move(user), std::forward<T>(data) });
 
         // State has the `on_user_enter` member
         if constexpr (std::experimental::is_detected_exact_v<on_user_enter_t, decltype_on_user_enter, C>) {
@@ -293,10 +299,11 @@ struct State {
         return users.size() - 1;
     }
 
-    std::enable_if_t<std::is_same_v<void, user_personal_data_t>, 
-    user_handle_t> create(std::unique_ptr<sf::TcpSocket> socket) {
-        assert(socket && "Socket must not be null");
-        users.push_back({ std::move(socket) });
+    template<typename _T = user_personal_data_t>
+    std::enable_if_t<std::is_same_v<void, _T> && std::is_same_v<_T, user_personal_data_t>, 
+    user_handle_t> create(User user) {
+        assert(user.socket && "Socket must not be null");
+        users.push_back({ std::move(user) });
 
         // State has the `on_user_enter` member
         if constexpr (std::experimental::is_detected_exact_v<on_user_enter_t, decltype_on_user_enter, C>) {
@@ -308,16 +315,16 @@ struct State {
     }
 
     template<typename D>
-    void send(user_data_t& user, D&& data) {
-        return send_packet(user, to_packet(std::forward<D>(data)));
+    void send(user_data_t& user_data, D&& data) {
+        return send_packet(user_data, to_packet(std::forward<D>(data)));
     }
 
-    void send_packet(user_data_t& user, sf::Packet const& packet) {
-        if(user.packets.size() >= 16) {
-            std::cerr <<"User packets count can't exceed the maximum allowed\n";
+    void send_packet(user_data_t& user_data, sf::Packet const& packet) {
+        if(user_data.user.packets.size() >= 16) {
+            std::cerr << "User packets count can't exceed the maximum allowed\n";
             return;
         }
-        user.packets.push_back(packet);
+        user_data.user.packets.push_back(packet);
     }
 
 };
@@ -353,8 +360,8 @@ struct RoomState : public State<RoomState, user_t> {
         return Idle{};
     }
 
-    Action on_leave_room(user_data_t& user, packet_t& packet) {
-        return change_state(main_lobby, user.socket, user.data);
+    Action on_leave_room(user_data_t& user_data, packet_t& packet) {
+        return change_state(main_lobby, user_data.user, user_data.data);
     }
 
     void on_user_enter(user_data_t& user_data) {
@@ -364,9 +371,9 @@ struct RoomState : public State<RoomState, user_t> {
 
         std::vector<std::string> spectators;
         spectators.reserve(users.size());
-        for(auto const& user : users) {
-            if (&user != left_player && &user != right_player) {
-                spectators.push_back(user.data);
+        for(auto const& user_data : users) {
+            if (&user_data != left_player && &user_data != right_player) {
+                spectators.push_back(user_data.data);
             }
         }
 
@@ -401,7 +408,7 @@ struct MainLobbyState : public State<MainLobbyState, user_t> {
 
     std::vector<std::unique_ptr<RoomState>>& rooms;
 
-    Action on_create_room(user_data_t& user, packet_t& packet) {
+    Action on_create_room(user_data_t& user_data, packet_t& packet) {
         // Find an ID without a room
         std::size_t room_id{ 0 };
         for(; room_id < rooms.size(); ++room_id) {
@@ -417,14 +424,14 @@ struct MainLobbyState : public State<MainLobbyState, user_t> {
             rooms[room_id] = std::make_unique<RoomState>(*this);
         }
 
-        broadcast_other(user, pong::packet::NewRoom{
+        broadcast_other(user_data, pong::packet::NewRoom{
             static_cast<int>(room_id)
         });
 
         return change_state(
             *rooms[room_id],
-            user.socket,
-            user.data
+            user_data.user,
+            user_data.data
         );
     }
 
@@ -467,16 +474,17 @@ struct NewUserState : public State<NewUserState, void> {
 
     MainLobbyState& main_lobby;
 
-    Action on_username_changed(user_data_t& user, packet_t& packet) {
+    Action on_username_changed(user_data_t& user_data, packet_t& packet) {
         auto username = from_packet<pong::packet::ChangeUsername>(packet).username;
 
-        auto is_valid = is_username_valid(username);
+        auto response = is_username_valid(username);
 
-        send(user, pong::packet::UsernameResponse{
-            is_valid
+        send(user_data, pong::packet::UsernameResponse{
+            response
         });
 
-        if (!is_valid) {
+        if (response != pong::packet::UsernameResponse::Okay) {
+            std::cout << "Username " << username << " is not valid\n";
             return Idle{};
         }
 
@@ -484,7 +492,7 @@ struct NewUserState : public State<NewUserState, void> {
 
         return change_state(
             main_lobby,
-            user.socket,
+            user_data.user,
             username
         );
 

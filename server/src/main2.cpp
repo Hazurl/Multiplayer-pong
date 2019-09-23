@@ -26,7 +26,7 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
             std::lock_guard lk{ clients_mutex };
 
             for(auto& client : clients) {
-                new_users.create(std::move(client));
+                new_users.create(User{ std::move(client) });
             }
 
             clients.clear();
