@@ -149,13 +149,13 @@ int main(int argc, char** argv) {
     bool up_pressed{ false };
     bool down_pressed{ false };
     bool input_updated{ true };
-    sf::Packet input_packet;
+    pong::Input input = pong::Input::Idle;
     
     bool has_send_username{ false };
 
     std::deque<SendPacket> packets_to_send;
     sf::Packet packet;
-    std::unique_ptr<sf::TcpSocket> socket;
+    std::unique_ptr<sf::TcpSocket> socket{ nullptr };
     std::future<std::unique_ptr<sf::TcpSocket>> future_socket;
 
     std::vector<sf::Text> users_connected;
@@ -218,8 +218,8 @@ int main(int argc, char** argv) {
                         return nullptr;
                     }
                     socket_ptr->setBlocking(false);
-                    return std::move(socket_ptr);
-                }, options.port ? *options.port : 48622);
+                    return socket_ptr;
+                }, options.port ? *options.port : 48624);
                 break;
             }
             case pong::State::Connecting: {
@@ -260,7 +260,7 @@ int main(int argc, char** argv) {
                                     std::cerr << "Invalid Username...\n";
                                     error_code = 1;
                                 }
-
+/*
                                 for(auto const& user : response.users) {
                                     auto& tmp_text = users_connected.emplace_back(user, font, 15);
                                     tmp_text.setPosition(20, 20 + (users_connected.size() - 1) * (tmp_text.getCharacterSize() + 5));
@@ -270,7 +270,7 @@ int main(int argc, char** argv) {
                                     auto& tmp_text = rooms_online.emplace_back("#" + std::to_string(room), font, 15);
                                     tmp_text.setPosition(boundaries.x - 20 - tmp_text.getLocalBounds().width, 20 + (rooms_online.size() - 1) * (tmp_text.getCharacterSize() + 5));
                                 }
-
+*/
                                 state = pong::State::ValidUser;
                                 std::cout << "All good !\n";
                             } else {
@@ -311,6 +311,62 @@ int main(int argc, char** argv) {
                             
                             auto& tmp_text = users_connected.emplace_back(new_user.username, font, 15);
                             tmp_text.setPosition(20, 20 + (users_connected.size() - 1) * (tmp_text.getCharacterSize() + 5));
+                        } else if (packet_id == pong::packet::PacketID::LobbyInfo) {
+                            pong::packet::LobbyInfo lobby;
+                            packet >> lobby;
+                            std::cout << "USERS: ";
+                            for(auto user : lobby.users) {
+                                std::cout << user << ' ';
+                            }
+                            std::cout << '\n';
+                            std::cout << "ROOMS: ";
+                            for(auto room : lobby.rooms) {
+                                std::cout << room << ' ';
+                            }
+                            std::cout << '\n';
+
+                            if (lobby.rooms.empty()) {
+                                sf::Packet create_room_packet;
+                                create_room_packet << pong::packet::CreateRoom{};
+                                packets_to_send.push_back({
+                                    create_room_packet,
+                                    [] () {} 
+                                });
+                            } else {
+                                sf::Packet enter_room_packet;
+                                enter_room_packet << pong::packet::EnterRoom{ lobby.rooms[0] };
+                                packets_to_send.push_back({
+                                    enter_room_packet,
+                                    [] () {} 
+                                });
+                            }
+                        } else if (packet_id == pong::packet::PacketID::RoomInfo) {
+                            pong::packet::RoomInfo room_info;
+                            packet >> room_info;
+
+                            std::cout << "LEFT: " << room_info.left_player << ", RIGHT:" << room_info.right_player << '\n';
+                            std::cout << "SPECTATORS: ";
+                            for(auto const& u : room_info.spectators) { 
+                                std::cout << u << " "; 
+                            }
+                            std::cout << '\n';
+
+                            state = pong::State::Spectator;
+                            sf::Packet enter_queue_packet;
+                            enter_queue_packet << pong::packet::EnterQueue{};
+                            packets_to_send.push_back({
+                                enter_queue_packet,
+                                [] () {} 
+                            });
+
+                        } else if (packet_id == pong::packet::PacketID::EnterRoomResponse) {
+                            pong::packet::EnterRoomResponse enter_room_response;
+                            packet >> enter_room_response;
+                            if (enter_room_response.result != pong::packet::EnterRoomResponse::Okay) {
+                                std::cout << "ERROR WHEN CREATING ROOM\n";
+                            } else {
+                                std::cout << "ROOM CREATED!\n";
+                            }
                         } else if (packet_id == pong::packet::PacketID::OldUser) {
                             pong::packet::OldUser old_user;
                             packet >> old_user;
@@ -365,6 +421,58 @@ int main(int argc, char** argv) {
                     case sf::Socket::Done: {
                         pong::packet::PacketID packet_id; 
                         packet >> packet_id;
+                        if (packet_id == pong::packet::PacketID::BePlayer) {
+                            pong::packet::BePlayer be_player;
+                            packet >> be_player;
+
+                            state = pong::State::Player;
+                            input = pong::Input::Idle;
+
+                        } else if (packet_id == pong::packet::PacketID::GameState) {
+                            packet >> game_state;
+                            ball_sprite.setPosition(game_state.ball.position);
+                            player_sprite.setPosition(player_sprite.getPosition().x, game_state.left.y);
+                            opponent_sprite.setPosition(opponent_sprite.getPosition().x, game_state.right.y);
+
+                        } else {
+                            std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected GameState #" << static_cast<int>(pong::packet::PacketID::GameState) << '\n';
+                        }
+                        break;
+                    }
+
+                    case sf::Socket::Disconnected: {
+                        state = pong::State::Offline;
+                        break;
+                    }
+
+                    case sf::Socket::Error: {
+                        window.close();
+                        std::cerr << "Internal error on socket when receiving username response...\n";
+                        error_code = 1;
+                        break;
+                    }
+
+                    default: {
+                        break;
+                    }
+                }
+                break;
+            }
+
+            case pong::State::Player: {
+                auto current_input = get_input(up_pressed, down_pressed);
+                if (input != current_input) {
+                    sf::Packet input_packet;
+                    input_packet << pong::packet::Input{ input };
+                    packets_to_send.push_back({
+                        input_packet,
+                        [] {}
+                    });
+                }
+                switch(socket->receive(packet)) {
+                    case sf::Socket::Done: {
+                        pong::packet::PacketID packet_id; 
+                        packet >> packet_id;
                         if (packet_id == pong::packet::PacketID::GameState) {
                             packet >> game_state;
                             ball_sprite.setPosition(game_state.ball.position);
@@ -404,7 +512,7 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (!packets_to_send.empty()) {
+        if (!packets_to_send.empty() && socket) {
             std::cout << packets_to_send.size() << " packets remaining to send\n";
             auto& p = packets_to_send.front();
             switch(socket->send(p.packet)) {
