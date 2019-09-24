@@ -45,6 +45,7 @@ struct StateBase {
 
 private:
 
+    template<typename C_> friend struct StateBase;
 
     receiver_map_t receivers;
     std::vector<User> users;
@@ -148,10 +149,15 @@ public:
 
     template<typename S, typename...Args>
     Action order_change_state(S& state, user_handle_t handle, Args&&...args) {
-        return [&socket = users[handle].socket, &state, tuple_args = std::make_tuple(std::forward<Args>(args)...)] () mutable {
-            std::apply([&socket, &state] (auto&&..._args) {
-                state.create(std::move(socket), std::forward<decltype(_args)>(_args)...);
+        return [this, handle, &socket = users[handle].socket, &state, tuple_args = std::make_tuple(std::forward<Args>(args)...)] () mutable {
+            auto new_handle = std::apply([&socket, &state] (auto&&..._args) {
+                return state.create(std::move(socket), std::forward<decltype(_args)>(_args)...);
             }, std::move(tuple_args));
+
+            std::swap(users[handle].packets, state.users[new_handle].packets);
+            for(auto p : users[handle].packets) {
+                state.users[new_handle].packets.push_back(p);
+            }
         };
     }
 
@@ -305,10 +311,6 @@ struct State : StateWithData<C, T> {
 private:
 
 
-    /*
-        std::nullopt => Remove user
-        { iterator } => Remove packets before iterator (not included)
-    */
     Action
     proccess_receive_packets(user_handle_t handle) {
         sf::Packet packet;
