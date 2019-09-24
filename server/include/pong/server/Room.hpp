@@ -46,10 +46,12 @@ struct RoomState : public State<RoomState, user_t> {
             left_player = handle;
 
 
+            std::cout << "Send NewPlayer\n";
             broadcast_other(left_player, pong::packet::NewPlayer{
                 pong::packet::NewPlayer::Side::Left,
                 get_user_data(left_player)
             });
+            std::cout << "Send BePlayer\n";
             send(left_player, pong::packet::BePlayer{
                 pong::packet::BePlayer::Side::Left
             });
@@ -66,10 +68,12 @@ struct RoomState : public State<RoomState, user_t> {
             right_player = handle;
 
 
+            std::cout << "Send NewPlayer\n";
             broadcast_other(right_player, pong::packet::NewPlayer{
                 pong::packet::NewPlayer::Side::Right,
                 get_user_data(right_player)
             });
+            std::cout << "Send BePlayer\n";
             send(right_player, pong::packet::BePlayer{
                 pong::packet::BePlayer::Side::Right
             });
@@ -79,10 +83,12 @@ struct RoomState : public State<RoomState, user_t> {
 
     Action on_abandon(user_handle_t handle, packet_t) {
         if (handle == left_player) {
+            std::cout << "Send OldPlayer\n";
             broadcast_other(handle, pong::packet::OldPlayer{
                 pong::packet::OldPlayer::Side::Left,
                 get_user_data(handle)
             });
+            std::cout << "Send NewUser\n";
             broadcast_other(handle, pong::packet::NewUser{
                 get_user_data(handle)
             });
@@ -90,10 +96,12 @@ struct RoomState : public State<RoomState, user_t> {
             update_players();
         }
         else if (handle == right_player) {
+            std::cout << "Send OldPlayer\n";
             broadcast_other(handle, pong::packet::OldPlayer{
                 pong::packet::OldPlayer::Side::Right,
                 get_user_data(handle)
             });
+            std::cout << "Send NewUser\n";
             broadcast_other(handle, pong::packet::NewUser{
                 get_user_data(handle)
             });
@@ -152,6 +160,7 @@ struct RoomState : public State<RoomState, user_t> {
 
 
     void on_user_enter(user_handle_t handle) {
+        std::cout << "Send NewUser\n";
         broadcast_other(handle, pong::packet::NewUser{
             get_user_data(handle)
         });
@@ -168,6 +177,7 @@ struct RoomState : public State<RoomState, user_t> {
         }
 
 
+        std::cout << "Send RoomInfo\n";
         send(handle, pong::packet::RoomInfo{
             is_valid(left_player) ? get_user_data(left_player) : "",
             is_valid(right_player) ? get_user_data(right_player) : "",
@@ -180,6 +190,7 @@ struct RoomState : public State<RoomState, user_t> {
         if (handle == left_player) {
             left_player = invalid_user_handle;
             update_players();
+            std::cout << "Send OldPlayer\n";
             broadcast_other(handle, pong::packet::OldPlayer{
                 pong::packet::OldPlayer::Side::Left,
                 get_user_data(handle)
@@ -188,6 +199,7 @@ struct RoomState : public State<RoomState, user_t> {
         else if (handle == right_player) {
             right_player = invalid_user_handle;
             update_players();
+            std::cout << "Send OldPlayer\n";
             broadcast_other(handle, pong::packet::OldPlayer{
                 pong::packet::OldPlayer::Side::Right,
                 get_user_data(handle)
@@ -196,6 +208,7 @@ struct RoomState : public State<RoomState, user_t> {
             queue.erase(std::remove(std::begin(queue), std::end(queue), handle), std::end(queue));
         }
 
+        std::cout << "Send OldUser\n";
         broadcast_other(handle, pong::packet::OldUser{
             get_user_data(handle)
         });

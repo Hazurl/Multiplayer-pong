@@ -52,6 +52,7 @@ struct NewUserState : public State<NewUserState> {
 
         auto response = is_username_valid(username);
 
+        std::cout << "Send UsernameResponse\n";
         send(handle, pong::packet::UsernameResponse{
             response
         });
