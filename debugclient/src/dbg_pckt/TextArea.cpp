@@ -137,8 +137,6 @@ void TextArea::move_cursor(CursorDirection dir, Selection sel, Step) {
             break;
     }
 
-    auto lower = selection_lower_bound();
-    auto sel_size = selection_size();
     force_generation();
 }
 

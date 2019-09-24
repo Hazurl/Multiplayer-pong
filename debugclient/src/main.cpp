@@ -92,9 +92,8 @@ int main(int argc, char** argv) {
                     if(event.key.control && event.key.code == sf::Keyboard::V) {
                         auto clipboard = sf::Clipboard::getString().toAnsiString();
                         clipboard.erase(std::remove_if(std::begin(clipboard), std::end(clipboard), [] (char c) { 
-                            return c < 32 || c > 127; 
+                            return c < 32 || c > 126; 
                         }), std::end(clipboard));
-                        auto size = clipboard.size();
                         text_area.write(clipboard);
                     }
 
@@ -116,7 +115,7 @@ int main(int argc, char** argv) {
                             std::visit([&packet] (auto&& value) { packet << value; }, res.success().as_variant());
                             packets_to_send.push_back(packet);
                         } else {
-                            std::cout << "ERROR\n";
+                            std::cout << "ERROR WHEN PARSING '" << content << "'\n";
                         }
                     } 
                     else if(event.key.code == sf::Keyboard::Left) {
