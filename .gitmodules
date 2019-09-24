@@ -4,3 +4,6 @@
 [submodule "debugclient/lib/parser"]
 	path = debugclient/lib/parser
 	url = https://github.com/Hazurl/parser
+[submodule "client/lib/SFML-Toolkit"]
+	path = client/lib/SFML-Toolkit
+	url = https://github.com/Hazurl/SFML-Toolkit/
