@@ -249,107 +249,129 @@ bool operator==(Input const& lhs, Input const& rhs) {
 
 
 
+sf::Packet& operator >> (sf::Packet& p, EnterQueue&) {
+    return p;
+}
+
+sf::Packet& operator << (sf::Packet& p, EnterQueue const&) {
+    return p << PacketID::EnterQueue;
+}  
+
+bool operator==(EnterQueue const&, EnterQueue const&) {
+    return true;
+}
+
+
+
+
+sf::Packet& operator >> (sf::Packet& p, LeaveQueue&) {
+    return p;
+}
+
+sf::Packet& operator << (sf::Packet& p, LeaveQueue const&) {
+    return p << PacketID::LeaveQueue;
+}  
+
+bool operator==(LeaveQueue const&, LeaveQueue const&) {
+    return true;
+}
+
+
+
+sf::Packet& operator >> (sf::Packet& p, Abandon&) {
+    return p;
+}
+
+sf::Packet& operator << (sf::Packet& p, Abandon const&) {
+    return p << PacketID::Abandon;
+}  
+
+bool operator==(Abandon const&, Abandon const&) {
+    return true;
+}
+
+
+
+
+sf::Packet& operator >> (sf::Packet& p, BePlayer& be_player) {
+    return p >> to_enum(be_player.side);
+}
+
+sf::Packet& operator << (sf::Packet& p, BePlayer const& be_player) {
+    return p << PacketID::BePlayer << from_enum(be_player.side);
+}
+
+bool operator == (BePlayer const& lhs, BePlayer const& rhs) {
+    return lhs.side == rhs.side;
+}
+
+
+
+sf::Packet& operator >> (sf::Packet& p, OldPlayer& old_player) {
+    return p >> to_enum(old_player.side) >> old_player.username;
+}
+
+sf::Packet& operator << (sf::Packet& p, OldPlayer const& old_player) {
+    return p << PacketID::OldPlayer << from_enum(old_player.side) << old_player.username;
+}
+
+bool operator == (OldPlayer const& lhs, OldPlayer const& rhs) {
+    return lhs.side == rhs.side && lhs.username == rhs.username;
+}
+
+
+
+
+
+sf::Packet& operator >> (sf::Packet& p, NewPlayer& new_player) {
+    return p >> to_enum(new_player.side) >> new_player.username;
+}
+
+sf::Packet& operator << (sf::Packet& p, NewPlayer const& new_player) {
+    return p << PacketID::NewPlayer << from_enum(new_player.side) << new_player.username;
+}
+
+bool operator == (NewPlayer const& lhs, NewPlayer const& rhs) {
+    return lhs.side == rhs.side && lhs.username == rhs.username;
+}
+
+
+
+
 sf::Packet& operator >> (sf::Packet& p, GamePacket& game_packet) {
     PacketID id;
     p >> id;
     switch(id) {
-        case PacketID::ChangeUsername: {
-            ChangeUsername tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
+#define process(P) \
+        case PacketID::P: { \
+            P tmp; \
+            p >> tmp; \
+            game_packet = std::move(tmp); \
+            break; \
         }
 
-        case PacketID::UsernameResponse: {
-            UsernameResponse tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
+        process(ChangeUsername)
+        process(GameState)
+        process(CreateRoom)
+        process(EnterRoom)
+        process(EnterRoomResponse)
+        process(Input)
+        process(LeaveRoom)
+        process(LobbyInfo)
+        process(NewRoom)
+        process(NewUser)
+        process(OldRoom)
+        process(OldUser)
+        process(RoomInfo)
+        process(UsernameResponse)
+        process(NewPlayer)
+        process(OldPlayer)
+        process(BePlayer)
+        process(Abandon)
+        process(EnterQueue) 
+        process(LeaveQueue)
 
-        case PacketID::EnterRoom: {
-            EnterRoom tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
-
-        case PacketID::EnterRoomResponse: {
-            EnterRoomResponse tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
-
-        case PacketID::LeaveRoom: {
-            LeaveRoom tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
-
-        case PacketID::Input: {
-            Input tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
-
-        case PacketID::GameState: {
-            GameState tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
-
-        case PacketID::NewUser: {
-            NewUser tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;      
-        }
-
-        case PacketID::OldUser: {
-            OldUser tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
-
-        case PacketID::CreateRoom: {
-            CreateRoom tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
-
-        case PacketID::NewRoom: {
-            NewRoom tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
-
-        case PacketID::OldRoom: {
-            OldRoom tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
-
-        case PacketID::LobbyInfo: {
-            LobbyInfo tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
-
-        case PacketID::RoomInfo: {
-            RoomInfo tmp;
-            p >> tmp;
-            game_packet = std::move(tmp);
-            break;
-        }
+#undef process
     }
 
     return p;

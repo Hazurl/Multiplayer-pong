@@ -22,6 +22,12 @@ std::string packet_to_string(pong::packet::OldRoom const& packet);
 std::string packet_to_string(pong::packet::OldUser const& packet);
 std::string packet_to_string(pong::packet::RoomInfo const& packet);
 std::string packet_to_string(pong::packet::UsernameResponse const& packet);
+std::string packet_to_string(pong::packet::NewPlayer const& packet);
+std::string packet_to_string(pong::packet::OldPlayer const& packet);
+std::string packet_to_string(pong::packet::BePlayer const& packet);
+std::string packet_to_string(pong::packet::Abandon const& packet);
+std::string packet_to_string(pong::packet::EnterQueue const& packet); 
+std::string packet_to_string(pong::packet::LeaveQueue const& packet);
 
 }
 

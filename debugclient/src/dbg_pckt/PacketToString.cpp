@@ -149,4 +149,32 @@ std::string packet_to_string(pong::packet::Input const& input) {
     return "Input{ input: " + response + " }";
 }
 
+std::string packet_to_string(pong::packet::NewPlayer const& packet) {
+    std::string side = packet.side == pong::packet::NewPlayer::Side::Left ? "Left" : "Right";
+    return "NewPlayer{" + side + ", " + packet.username + "}";
+}
+
+std::string packet_to_string(pong::packet::OldPlayer const& packet)  {
+    std::string side = packet.side == pong::packet::OldPlayer::Side::Left ? "Left" : "Right";
+    return "OldPlayer{ " + side + ", " + packet.username + " }";
+}
+
+std::string packet_to_string(pong::packet::BePlayer const& packet) {
+    std::string side = packet.side == pong::packet::BePlayer::Side::Left ? "Left" : "Right";
+    return "BePlayer{ " + side + " }";
+}
+
+std::string packet_to_string(pong::packet::Abandon const&) {
+    return "Abandon{}";
+}
+
+std::string packet_to_string(pong::packet::EnterQueue const&) {
+    return "EnterQueue{}";
+}
+
+std::string packet_to_string(pong::packet::LeaveQueue const&) {
+    return "LeaveQueue{}";
+}
+
+
 }

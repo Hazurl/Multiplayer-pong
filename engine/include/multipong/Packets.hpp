@@ -24,25 +24,25 @@ enum class State {
 
     /*
         [CLIENT] Send ChangeUsername
-        [SERVER] Send UsernameResponse
+        [SERVER] Send UsernameResponse, LobbyInfo
     */
     InvalidUser,
 
     /*
         [Client] Send EnterRoom, CreateRoom
-        [SERVER] Send EnterRoomResponse, NewUser, OldUser
+        [SERVER] Send EnterRoomResponse, RoomInfo, NewUser, OldUser
     */
     ValidUser,
 
     /*
         [CLIENT] Send LeaveRoom, EnterQueue, LeaveQueue
-        [SERVER] Send GameState, NewSpectator, NewPlayer, LeaveRoomResponse, EnterQueueResponse, LeaveQueueResponse
+        [SERVER] Send GameState, NewUser, OldUser, NewPlayer, OldPlayer, BePlayer 
     */
     Spectator,
 
     /*
-        [CLIENT] Send Input
-        [SERVER] Send GameState, NewSpectator, NewPlayer 
+        [CLIENT] Send Input, Abandon
+        [SERVER] Send GameState, NewUser, OldUser, NewPlayer, OldPlayer 
     */
     Player,
 
@@ -89,6 +89,12 @@ enum class PacketID {
     OldRoom = 13,
     LobbyInfo = 14,
     RoomInfo = 15,
+    NewPlayer = 16,
+    OldPlayer = 17,
+    BePlayer = 18,
+    Abandon = 19,
+    EnterQueue = 20, 
+    LeaveQueue = 21
 };
 
 sf::Packet& operator >> (sf::Packet& p, PacketID& id);
@@ -248,6 +254,74 @@ sf::Packet& operator >> (sf::Packet& p, Input& username);
 sf::Packet& operator << (sf::Packet& p, Input const& username);
 bool operator == (Input const& lhs, Input const& rhs);
 
+struct EnterQueue {
+    static constexpr PacketID packet_id = PacketID::EnterQueue;
+};
+
+sf::Packet& operator >> (sf::Packet& p, EnterQueue& username);
+sf::Packet& operator << (sf::Packet& p, EnterQueue const& username);
+bool operator == (EnterQueue const& lhs, EnterQueue const& rhs);
+
+struct LeaveQueue {
+    static constexpr PacketID packet_id = PacketID::LeaveQueue;
+};
+
+sf::Packet& operator >> (sf::Packet& p, LeaveQueue& username);
+sf::Packet& operator << (sf::Packet& p, LeaveQueue const& username);
+bool operator == (LeaveQueue const& lhs, LeaveQueue const& rhs);
+
+struct Abandon {
+    static constexpr PacketID packet_id = PacketID::Abandon;
+};
+
+sf::Packet& operator >> (sf::Packet& p, Abandon& username);
+sf::Packet& operator << (sf::Packet& p, Abandon const& username);
+bool operator == (Abandon const& lhs, Abandon const& rhs);
+
+struct BePlayer {
+    static constexpr PacketID packet_id = PacketID::BePlayer;
+
+    enum class Side {
+        Left, Right
+    };
+
+    Side side;
+};
+
+sf::Packet& operator >> (sf::Packet& p, BePlayer& username);
+sf::Packet& operator << (sf::Packet& p, BePlayer const& username);
+bool operator == (BePlayer const& lhs, BePlayer const& rhs);
+
+struct OldPlayer {
+    static constexpr PacketID packet_id = PacketID::OldPlayer;
+
+    enum class Side {
+        Left, Right
+    };
+
+    Side side;
+    std::string username;
+};
+
+sf::Packet& operator >> (sf::Packet& p, OldPlayer& username);
+sf::Packet& operator << (sf::Packet& p, OldPlayer const& username);
+bool operator == (OldPlayer const& lhs, OldPlayer const& rhs);
+
+struct NewPlayer {
+    static constexpr PacketID packet_id = PacketID::NewPlayer;
+
+    enum class Side {
+        Left, Right
+    };
+
+    Side side;
+    std::string username;
+};
+
+sf::Packet& operator >> (sf::Packet& p, NewPlayer& username);
+sf::Packet& operator << (sf::Packet& p, NewPlayer const& username);
+bool operator == (NewPlayer const& lhs, NewPlayer const& rhs);
+
 using GamePacket = std::variant<
     ChangeUsername,
     GameState,
@@ -262,7 +336,13 @@ using GamePacket = std::variant<
     OldRoom,
     OldUser,
     RoomInfo,
-    UsernameResponse
+    UsernameResponse,
+    NewPlayer,
+    OldPlayer,
+    BePlayer,
+    Abandon,
+    EnterQueue, 
+    LeaveQueue
 >;
 
 sf::Packet& operator >> (sf::Packet& p, GamePacket& game_packet);
