@@ -14,6 +14,12 @@
 #include <dbg_pckt/parser/OldUser.hpp>
 #include <dbg_pckt/parser/RoomInfo.hpp>
 #include <dbg_pckt/parser/UsernameResponse.hpp>
+#include <dbg_pckt/parser/NewPlayer.hpp>
+#include <dbg_pckt/parser/OldPlayer.hpp>
+#include <dbg_pckt/parser/Abandon.hpp>
+#include <dbg_pckt/parser/EnterQueue.hpp>
+#include <dbg_pckt/parser/LeaveQueue.hpp>
+#include <dbg_pckt/parser/BePlayer.hpp>
 #include <dbg_pckt/parser/GameState.hpp>
 
 #include <multipong/Packets.hpp>
@@ -38,6 +44,12 @@ namespace command_details {
     constexpr std::string_view old_user_str = "olduser";
     constexpr std::string_view room_info_str = "roominfo";
     constexpr std::string_view username_response_str = "usernameresponse";
+    constexpr std::string_view new_player_str = "newplayer";
+    constexpr std::string_view old_player_str = "oldplayer";
+    constexpr std::string_view be_player_str = "beplayer";
+    constexpr std::string_view abandon_str = "abandon";
+    constexpr std::string_view enter_queue_str = "enterqueue";
+    constexpr std::string_view leave_queue_str = "leavequeue";
 
     template<auto& str>
     bool is_keyword(std::string ident) {
@@ -72,6 +84,12 @@ namespace command_details {
         check(old_user_str)
         check(room_info_str)
         check(username_response_str)
+        check(new_player_str)
+        check(old_player_str)
+        check(be_player_str)
+        check(abandon_str)
+        check(enter_queue_str)
+        check(leave_queue_str)
 
 #undef check
 
@@ -126,7 +144,13 @@ constexpr auto command =
             br(old_room),
             br(old_user),
             br(room_info),
-            br(username_response)
+            br(username_response),
+            br(new_player),
+            br(old_player),
+            br(be_player),
+            br(abandon),
+            br(enter_queue),
+            br(leave_queue)
 
 #undef br
 

@@ -24,7 +24,13 @@ using ParserResult = wpr::Result<wpr::Sum<
     pong::packet::OldRoom,
     pong::packet::OldUser,
     pong::packet::RoomInfo,
-    pong::packet::UsernameResponse
+    pong::packet::UsernameResponse,
+    pong::packet::NewPlayer,
+    pong::packet::OldPlayer,
+    pong::packet::BePlayer,
+    pong::packet::Abandon,
+    pong::packet::EnterQueue, 
+    pong::packet::LeaveQueue
 >, std::vector<std::string>>;
 
 
