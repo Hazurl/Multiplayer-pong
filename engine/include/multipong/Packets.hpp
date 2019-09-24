@@ -30,7 +30,7 @@ enum class State {
 
     /*
         [Client] Send EnterRoom, CreateRoom
-        [SERVER] Send EnterRoomResponse, RoomInfo, NewUser, OldUser
+        [SERVER] Send EnterRoomResponse, RoomInfo, NewUser, OldUser, NewRoom, (OldRoom ?)
     */
     ValidUser,
 
