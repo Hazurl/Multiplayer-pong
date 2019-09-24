@@ -32,14 +32,14 @@ pong::packet::UsernameResponse::Result is_username_valid(std::string const& user
 
 
 struct NewUserState : public State<NewUserState> {
-    NewUserState(MainLobbyState& main_lobby) : State({
+    NewUserState(MainLobbyState& _main_lobby) : State({
 
 
         // Receive
         { pong::packet::PacketID::ChangeUsername, &NewUserState::on_username_changed }
 
 
-    }), main_lobby{ main_lobby } {}
+    }), main_lobby{ _main_lobby } {}
 
     
     
