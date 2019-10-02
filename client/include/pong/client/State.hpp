@@ -25,36 +25,35 @@ using packet_t = sf::Packet;
 
 struct Abord{};
 struct Idle{};
-using ChangeState = std::function<std::unique_ptr<StateBase>(socket_ref_t socket)>;
+using ChangeState = std::function<std::unique_ptr<StateBase>(StateBase&)>;
 
 using Action = std::variant<Idle, Abord, ChangeState>; 
 
-
 template<typename S, typename...Args>
-ChangeState change_state(Args&&...args) {
-    return [tuple_args = std::make_tuple(std::forward<Args>(args)...)] (socket_ref_t socket) mutable {
-        return std::apply([&socket] (auto&&..._args) {
-            return std::make_unique<S>(socket, std::forward<decltype(_args)>(_args)...);
-        }, std::move(tuple_args));
-    };
-}
+ChangeState change_state(Args&&...args);
 
 struct StateBase : sf::Drawable, sftk::EventListener {
-
-    using abord_connection_t = bool;
 
 
     StateBase(socket_ref_t _socket) : socket{ _socket } {}
 
-
     socket_ref_t socket;
 
-    std::queue<packet_t> outgoing_packets;
-    std::optional<packet_t> current_outgoing_packet;
+    std::queue<std::pair<packet_t, std::function<Action()>>> outgoing_packets;
+    std::optional<std::pair<packet_t, std::function<Action()>>> current_outgoing_packet;
 
     virtual Action dispatch(pong::packet::PacketID id, packet_t packet) = 0;
     virtual void update(float dt) {}
     virtual void draw(sf::RenderTarget &target, sf::RenderStates states) const {}
+
+    template<typename...Args>
+    void send_notify(std::function<Action()> f, Args&&...args) {
+        assert(outgoing_packets.size() <= 16);
+
+        sf::Packet packet;
+        (packet << ... << std::forward<Args>(args));
+        outgoing_packets.emplace(std::move(packet), std::move(f));
+    }
 
     template<typename...Args>
     void send(Args&&...args) {
@@ -62,10 +61,10 @@ struct StateBase : sf::Drawable, sftk::EventListener {
 
         sf::Packet packet;
         (packet << ... << std::forward<Args>(args));
-        outgoing_packets.emplace(std::move(packet));
+        outgoing_packets.emplace(std::move(packet), std::function<Action()>{});
     }
 
-    abord_connection_t send_all() {
+    Action send_all() {
         while(!outgoing_packets.empty()) {
             if (!current_outgoing_packet) {
                 current_outgoing_packet = outgoing_packets.front();
@@ -73,28 +72,34 @@ struct StateBase : sf::Drawable, sftk::EventListener {
             }
             
 
-            switch(socket.send(*current_outgoing_packet)) {
+            switch(socket.send(current_outgoing_packet->first)) {
                 case sf::Socket::Status::Partial: {
-                    return false;
+                    return Idle{};
                 }
 
                 case sf::Socket::Status::Done: {
+                    if (current_outgoing_packet->second) {
+                        auto res = current_outgoing_packet->second();
+                        if (!std::holds_alternative<Idle>(res)) {
+                            return res;
+                        }
+                    }
                     current_outgoing_packet = std::nullopt;
                     break;
                 }
 
                 case sf::Socket::Status::NotReady: {
-                    return false;
+                    return Idle{};
                 }
 
                 case sf::Socket::Status::Error:
                 case sf::Socket::Status::Disconnected: {
-                    return true;
+                    return Abord{};
                 }
             }
         }
 
-        return false;
+        return Idle{};
     }
 
     Action receive_all() {
@@ -133,7 +138,6 @@ struct State : StateBase {
 
     using receiver_t = Action (C::*)(packet_t);
     using receiver_map_t = std::unordered_map<pong::packet::PacketID, receiver_t, PacketIDHasher>;
-    using typename StateBase::abord_connection_t;
 
     receiver_map_t receivers;
 
@@ -150,5 +154,22 @@ struct State : StateBase {
     }
 
 };
+
+template<typename S, typename...Args>
+ChangeState change_state(Args&&...args) {
+    return [tuple_args = std::forward_as_tuple(std::forward<Args>(args)...)] (StateBase& old_state) mutable {
+        return std::apply([&old_state] (auto&&..._args) {
+            auto s = std::make_unique<S>(old_state.socket, std::forward<decltype(_args)>(_args)...);
+            while(!old_state.outgoing_packets.empty()) {
+                s->outgoing_packets.emplace(old_state.outgoing_packets.front());
+                old_state.outgoing_packets.pop();
+            }
+            s->current_outgoing_packet = std::move(old_state.current_outgoing_packet);
+
+
+            return s;
+        }, std::move(tuple_args));
+    };
+}
 
 }

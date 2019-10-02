@@ -17,6 +17,10 @@
 #include <pong/client/LoginIn.hpp>
 #include <pong/client/State.hpp>
 
+#include <pong/client/gui/NotificationQueue.hpp>
+
+#include <pong/client/gui/Constraint/Constraint.hpp>
+
 struct Options {
     std::optional<std::string> username;
     std::optional<int> port;
@@ -99,7 +103,11 @@ int main(int argc, char** argv) {
     if (!font.loadFromFile("../assets/neoletters.ttf")) {
         std::cout << "Couldn't load font '../assets/neoletters.ttf'\n";
         std::exit(1);
-    }
+    }/*
+    if (!font.loadFromFile("../assets/Roboto-Regular.ttf")) {
+        std::cout << "Couldn't load font '../assets/Roboto-Regular.ttf'\n";
+        std::exit(1);
+    }*/
 
     sf::Clock clock;
 
@@ -107,6 +115,9 @@ int main(int argc, char** argv) {
     std::future<std::unique_ptr<sf::TcpSocket>> future_socket;
 
     std::unique_ptr<pong::client::StateBase> state{ nullptr };
+
+    pong::client::gui::NotificationQueue notification_queue{ font, 5 };
+    int i{ 0 };
 
     future_socket = std::async(std::launch::async, [] (int port) -> std::unique_ptr<sf::TcpSocket> {
         auto socket_ptr = std::make_unique<sf::TcpSocket>();
@@ -121,7 +132,8 @@ int main(int argc, char** argv) {
         // Process events
         sf::Event event;
         while (window.pollEvent(event)) {
-            if (state) {
+            bool propagate = sftk::dispatch(window, event, notification_queue);
+            if (propagate && state) {
                 sftk::dispatch(window, event, *state);
             }
 
@@ -129,6 +141,11 @@ int main(int argc, char** argv) {
                 case sf::Event::Closed: {
                     window.close();
                     break;
+                }
+                case sf::Event::KeyPressed: {
+                    if (event.key.code == sf::Keyboard::Space) {
+                        notification_queue.push("Something #" + std::to_string(i++));
+                    }
                 }
                 default: { break; }
             }
@@ -144,32 +161,40 @@ int main(int argc, char** argv) {
                 }
 
                 socket = std::move(res);
-                state = std::make_unique<pong::client::LoginIn>(*socket, options.username.value_or(""));
+                state = std::make_unique<pong::client::LoginIn>(*socket, options.username.value_or(""), font);
             }
         } else {
-            auto abord = state->send_all();
-            if (abord) {
-                window.close();
-                std::cerr << "Abording after sending...\n";
-                error_code = 1;
-            } else {
+            {
+                auto res = state->send_all();
+                if (std::holds_alternative<pong::client::Abord>(res)) {
+                    window.close();
+                    std::cerr << "Abording after receiving...\n";
+                    error_code = 1;
+                    break;
+                } else if (std::holds_alternative<pong::client::ChangeState>(res)) {
+                    state = std::get<pong::client::ChangeState>(res)(*state);
+                }
+            }
+            {
                 auto res = state->receive_all();
                 if (std::holds_alternative<pong::client::Abord>(res)) {
                     window.close();
                     std::cerr << "Abording after receiving...\n";
                     error_code = 1;
                 } else if (std::holds_alternative<pong::client::ChangeState>(res)) {
-                    state = std::get<pong::client::ChangeState>(res)(*socket);
+                    state = std::get<pong::client::ChangeState>(res)(*state);
                 } // else Idle
             }
-
         }
 
+        float dt = clock.restart().asSeconds();
         window.clear(sf::Color::Black);
         if (state) {
-            state->update(clock.restart().asSeconds());
+            state->update(dt);
             window.draw(*state);
         }
+        notification_queue.update(dt);
+        window.draw(notification_queue);
         window.display();
     }
 

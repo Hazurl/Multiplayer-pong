@@ -11,13 +11,14 @@ namespace pong::client {
 struct LoginIn : State<LoginIn> {
     using base_t = State<LoginIn>;
 
-    using typename base_t::receiver_t;
-    using typename base_t::receiver_map_t;
-    using typename base_t::abord_connection_t;
+    sf::Font const& font;
 
-    LoginIn(socket_ref_t _socket, std::string username) : base_t(_socket, {
-        { pong::packet::PacketID::UsernameResponse, &LoginIn::on_username_response }
-    }) {
+    LoginIn(socket_ref_t _socket, std::string username, sf::Font const& font) 
+    :   base_t(_socket, {
+            { pong::packet::PacketID::UsernameResponse, &LoginIn::on_username_response }
+        })
+    ,   font{ font }
+    {
 
         send(pong::packet::ChangeUsername{ std::move(username) });
 
@@ -27,7 +28,7 @@ struct LoginIn : State<LoginIn> {
         auto res = from_packet<pong::packet::UsernameResponse>(packet).result;
         std::cout << "UsernameResponse: " << (int)res << '\n';
         if (res == pong::packet::UsernameResponse::Okay) {
-            return change_state<InMainLobby>();
+            return change_state<InMainLobby>(font);
         }
 
         return Abord{};

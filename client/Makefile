@@ -73,7 +73,7 @@ header-of = $(1:%$(EXT_SRC_FILE)=%$(EXT_INC_FILE))
 # Relative to $(SRC_FOLDER)
 SRC_EXCLUDE_FILE := 
 # All files that are not use for libraries, don't add src/
-SRC_MAINS := main.cpp main2.cpp
+SRC_MAINS := main.cpp main2.cpp main3.cpp
 # The main file to use (must be in $(SRC_MAINS))
 SRC_MAIN := main2.cpp
 
@@ -82,7 +82,7 @@ SRC_MAIN := main2.cpp
 #####
 
 OPTI := -g
-FLAGS := -std=c++17  $(OPTI) -pthread
+FLAGS := -std=c++2a  $(OPTI) -pthread
 FLAGS += -Wall -Wextra -Wno-pmf-conversions -Wshadow -Wpedantic -Wduplicated-cond -Wduplicated-branches -Wlogical-op 
 FLAGS += -Wnull-dereference -Wuseless-cast -Wold-style-cast -Wcast-align -Wcast-qual -Wno-missing-field-initializers 
 TEST_FLAGS := -fsanitize=address -fsanitize=pointer-subtract -fsanitize=pointer-compare -fsanitize=leak -fsanitize=undefined -fuse-ld=gold
@@ -102,10 +102,10 @@ INC_FLAG := -I $(INC_FOLDER) -I ../engine/include -I ./lib/SFML-Toolkit/include
 LIBS_PATH := -L ../engine/build/static  -L ./lib/SFML-Toolkit/build/static
 
 # For example: -lsfml-graphics
-LIBS := -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network -lmulti-pong-engine -lsftkeventListener -lsftkfancyText
+LIBS := -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network -lmulti-pong-engine -lsftkfancyText -lsftkprinter
 
 # Library that require to be build
-LIB_TO_BUILD := ../engine/build/static/libmulti-pong-engine.a ./lib/SFML-Toolkit/build/static/libsftkeventListener.a ./lib/SFML-Toolkit/build/static/libsftkfancyText.a
+LIB_TO_BUILD := ../engine/build/static/libmulti-pong-engine.a ./lib/SFML-Toolkit/build/static/libsftkfancyText.a ./lib/SFML-Toolkit/build/static/libsftkprinter.a
 
 # Create rules to build the libraries
 
@@ -113,13 +113,13 @@ LIB_TO_BUILD := ../engine/build/static/libmulti-pong-engine.a ./lib/SFML-Toolkit
 	@$(call _special,BUILDING STATIC LIBRARY ($@)...)
 	@cd ../engine/ && make MAKEFLAGS="" | sed "s/^/\t/"
 
-./lib/SFML-Toolkit/build/static/libsftkeventListener.a:
-	@$(call _special,BUILDING STATIC LIBRARY ($@)...)
-	@cd ./lib/SFML-Toolkit/ && make eventlistener-static MAKEFLAGS="" | sed "s/^/\t/"
-
 ./lib/SFML-Toolkit/build/static/libsftkfancyText.a:
 	@$(call _special,BUILDING STATIC LIBRARY ($@)...)
 	@cd ./lib/SFML-Toolkit/ && make fancytext-static MAKEFLAGS="" | sed "s/^/\t/"
+
+./lib/SFML-Toolkit/build/static/libsftkprinter.a:
+	@$(call _special,BUILDING STATIC LIBRARY ($@)...)
+	@cd ./lib/SFML-Toolkit/ && make printer-static MAKEFLAGS="" | sed "s/^/\t/"
 
 ###############################################
 #                   PRIVATE                   #
