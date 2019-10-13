@@ -34,7 +34,8 @@ T& getter(C& c) {
 
 
 
-
+using user_id_t = std::uintptr_t;
+constexpr user_id_t invalid_user_id = 0;
 using user_handle_t = std::size_t;
 constexpr user_handle_t invalid_user_handle = std::numeric_limits<std::size_t>::max();
 

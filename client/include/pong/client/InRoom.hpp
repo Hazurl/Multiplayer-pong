@@ -6,87 +6,127 @@
 #include <pong/client/Common.hpp>
 
 #include <pong/client/gui/Button.hpp>
+#include <pong/client/gui/Text.hpp>
+#include <pong/client/gui/Sprite.hpp>
+
+#include <multipong/Game.hpp>
 
 namespace pong::client {
+
+struct Game {
+    enum class Playing {
+        Left, Right, Spectator
+    };
+
+
+    static constexpr float ball_radius      { 8 };
+    static constexpr float pad_height       { 80 };
+    static constexpr float pad_width        { 12 };
+    static constexpr float pad_padding      { 40 };
+    static constexpr float pad_max_speed    { 200 };
+    static constexpr float ball_max_speed   { 100 };
+    static constexpr float boundaries_x     { 800 };
+    static constexpr float boundaries_y     { 600 };
+    static constexpr float ball_boundaries_x{ boundaries_x - ball_radius };
+    static constexpr float ball_boundaries_y{ boundaries_y - ball_radius };
+    static constexpr float pad_boundary     { boundaries_y - pad_height };
+
+    static const     sf::Vector2f boundaries;
+    static const     sf::Vector2f ball_boundaries;
+
+    pong::Ball ball;
+    pong::Pad pad_left;
+    pong::Pad pad_right;
+
+    Game();
+    void update(float dt, Playing playing_state, pong::Input input);
+};
 
 struct InRoom : State<InRoom> {
     using base_t = State<InRoom>;
 
+
     sf::Font const& font;
+    gui::Gui<>& gui;
+    gui::RectProperties window_properties;
 
-    InRoom(socket_ref_t _socket, sf::Font const& font) 
-    :   base_t(_socket, {
-            { pong::packet::PacketID::GameState, &InRoom::on_game_state },
-            { pong::packet::PacketID::RoomInfo,  &InRoom::on_room_info },
-            { pong::packet::PacketID::NewUser,   &InRoom::on_new_user },
-            { pong::packet::PacketID::OldUser,   &InRoom::on_old_user },
-            { pong::packet::PacketID::NewPlayer, &InRoom::on_new_player },
-            { pong::packet::PacketID::OldPlayer, &InRoom::on_old_player },
-            { pong::packet::PacketID::BePlayer,  &InRoom::on_be_player }
-        })
-// GameState, NewUser, OldUser, NewPlayer, OldPlayer, BePlayer
-    ,   font{ font }
-    {
-    }
+    Game game;
 
-    void update(float dt) override {
+    sf::RectangleShape left_pad;
+    sf::RectangleShape right_pad;
+    sf::RectangleShape ball;
 
-    }
+    Game::Playing playing_state;
+
+    bool is_pressing_down;
+    bool is_pressing_up;
+
+    std::string left_player;
+    std::string right_player;
+    unsigned int spectators_count;
+
+    std::string username;
+
+    gui::Text versus_txt;
+    gui::Text left_versus_txt;
+    gui::Text right_versus_txt;
+
+    gui::Text score_dash_txt;
+    gui::Text left_score_txt;
+    gui::Text right_score_txt;
+
+    gui::Text spectator_count_txt;
+    sf::Texture spectator_texture;
+    gui::Sprite spectator_spr;
+
+    gui::Text quit_txt;
+    gui::Button quit_button;
+
+    gui::Text join_queue_txt;
+    gui::Button join_queue_button;
+
+    gui::Text leave_queue_txt;
+    gui::Button leave_queue_button;
+
+    gui::Text abandon_txt;
+    gui::Button abandon_button;
+
+    bool return_to_main_lobby;
+    bool is_in_queue;
+    bool want_to_abandon;
 
 
-    void draw(sf::RenderTarget &target, sf::RenderStates states) const override {
-        
-    }
+    InRoom(socket_ptr_t _socket, gui::Gui<>& gui, gui::RectProperties window_properties, sf::Font const& font, std::string username);
 
 
+    void update_properties(gui::Gui<> const& gui) override;
+    void notify_gui(gui::Gui<>& gui) const override;
 
-    Action on_room_info(packet_t packet) {
-        auto room_info = from_packet<pong::packet::RoomInfo>(packet);
-        std::cout << "Right player: " << room_info.right_player << '\n';
-        std::cout << "Left player: " << room_info.left_player << '\n';
-        std::cout << "Spectators: ";
-        for(auto sp : room_info.spectators) {
-            std::cout << sp << " ";
-        }
-        std::cout << "\n";
-        return Idle{};
-    }
 
-    Action on_game_state(packet_t packet) {
-        auto gs = from_packet<pong::packet::GameState>(packet);
-        return Idle{};
-    }
+    Action update(float dt) override;
 
-    Action on_new_user(packet_t packet) {
-        auto new_user = from_packet<pong::packet::NewUser>(packet).username;
-        std::cout << "New user " << new_user << '\n';
-        return Idle{};
-    }
 
-    Action on_old_user(packet_t packet) {
-        auto old_user = from_packet<pong::packet::OldUser>(packet).username;
-        std::cout << "Old user " << old_user << '\n';
-        return Idle{};
-    }
+    void update_graphics();
+    void reset_game();
+    pong::Input get_input() const;
 
-    Action on_new_player(packet_t packet) {
-        auto new_player = from_packet<pong::packet::NewPlayer>(packet);
-        std::cout << "New player " << new_player.username << " on " << (new_player.side == pong::packet::NewPlayer::Side::Left ? "left" : "right") << " side" << '\n';
-        return Idle{};
-    }
+    void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
 
-    Action on_old_player(packet_t packet) {
-        auto old_player = from_packet<pong::packet::OldPlayer>(packet);
-        std::cout << "Old player " << old_player.username << " on " << (old_player.side == pong::packet::OldPlayer::Side::Left ? "left" : "right") << " side" << '\n';
-        return Idle{};
-    }
 
-    Action on_be_player(packet_t packet) {
-        auto be_player_side = from_packet<pong::packet::BePlayer>(packet);
-        std::cout << "BePlayer " << (be_player_side.side == pong::packet::BePlayer::Side::Left ? "left" : "right") << '\n';
-        return Idle{};
-    }
+    sftk::PropagateEvent on_mouse_button_pressed(sf::Window&, sf::Event::MouseButtonEvent const& b) override;
+    sftk::PropagateEvent on_mouse_button_released(sf::Window&, sf::Event::MouseButtonEvent const& b) override;
+    sftk::PropagateEvent on_mouse_moved(sf::Window&, sf::Event::MouseMoveEvent const& b) override;
+    sftk::PropagateEvent on_key_pressed(sf::Window&, sf::Event::KeyEvent const& b) override;
+    sftk::PropagateEvent on_key_released(sf::Window&, sf::Event::KeyEvent const& b) override;
 
+
+    Action on_room_info(packet_t packet);
+    Action on_game_state(packet_t packet);
+    Action on_new_user(packet_t packet);
+    Action on_old_user(packet_t packet);
+    Action on_new_player(packet_t packet);
+    Action on_old_player(packet_t packet);
+    Action on_be_player(packet_t packet);
 
 
 };

@@ -14,9 +14,9 @@
 #include <random>
 #include <algorithm>
 
-#include <pong/client/gui/Constraint/Constraint.hpp>
-#include <pong/client/gui/Constraint/Interface.hpp>
-#include <pong/client/gui/Constraint/Set.hpp>
+#include <pong/client/gui/constraint/Constraint.hpp>
+#include <pong/client/gui/constraint/Interface.hpp>
+#include <pong/client/gui/constraint/Set.hpp>
 
 #include <sftk/print/Printer.hpp>
 

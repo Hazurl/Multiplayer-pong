@@ -7,8 +7,8 @@
 
 #include <SFML/Graphics.hpp>
 
-#include <pong/client/gui/Constraint/Constraint.hpp>
-#include <pong/client/gui/Constraint/Set.hpp>
+#include <pong/client/gui/constraint/Constraint.hpp>
+#include <pong/client/gui/constraint/Set.hpp>
 
 #include <chrono>
 
@@ -71,7 +71,7 @@ namespace details {
     template<auto f, typename Args, typename R, std::size_t...Is>
     auto uncurry(std::index_sequence<Is...>) {
         return [] (std::vector<R> const& vec) {
-            assert(vec.size() >= std::tuple_size_v<Args>);
+            assert(vec.size() >= std::tuple_size_v<Args> && "The constraint's function provided doesn't not have the same number of parameter as the number of dependencies");
             if constexpr (std::is_convertible_v<std::vector<R> const&, last_tuple_element_t<Args>>) {
                 return f(vec[Is]..., std::vector<R>(std::begin(vec) + (std::tuple_size_v<Args> - 1), std::end(vec)));
             } else {
@@ -110,7 +110,7 @@ private:
     std::vector<Constraint> constraints;
 
     std::vector<property_id_t> order;
-    BitSet<> dirty_properties;
+    bool order_up_to_date = false;
 
     auto get_constraint_iterator(property_id_t id) {
         return std::lower_bound(std::begin(constraints), std::end(constraints), id, 
@@ -127,6 +127,10 @@ private:
     }
 
 public:
+
+    bool is_up_to_date() const {
+        return order_up_to_date;
+    }
 
     bool compute_order() {
         property_graph_t graph;
@@ -149,72 +153,57 @@ public:
 
         if (res) {
             order = std::move(*res);
-            return true;
+            return order_up_to_date = true;
         }
 
-        return false;
+        return order_up_to_date = false;
     }
 
     void update_properties() {
-        std:size_t i = order.size();
-        //auto start = std::chrono::system_clock::now();
-    
         for(auto const& property : order) {   
             auto it = get_constraint_iterator(property);
             if (it != std::end(constraints) && it->id == property) {
                 auto& constraint = *it;
                 std::vector<T> ts;
-                //bool is_dirty = dirty_properties.contains(property);
 
                 for(auto p : constraint.dependencies) {
-                    /*if (dirty_properties.contains(p)) {
-                        is_dirty = true;
-                    }*/
                     ts.push_back(get_property(p));
                 }
-                /*if (is_dirty) {
-                    dirty_properties.set(property);
-                    --i;*/
-                    get_property(property) = constraint.func(ts);/*
-                }*/
+                get_property(property) = constraint.func(ts);
             }
         }
-    
-        dirty_properties.clear();
-    
-        /*auto end = std::chrono::system_clock::now();
-        std::cout << "AVOIDED: " << i << '/' << order.size() << '\n';
-        std::cout << "TOOK " << std::chrono::duration<double>(end - start).count() << '\n';*/
     }
 
     property_id_t allocate_properties(std::size_t const count) {
         assert(count > 1);
 
         auto const index = values.push_multiple(count);
-        dirty_properties.set_multiple(index, count);
 
+        order_up_to_date = false;
         return index;
     }
 
     void free_properties(property_id_t const index, std::size_t const count) {
         assert(count > 1);
 
+        order_up_to_date = false;
         values.erase_multiple(index, count);
     }
 
     property_id_t allocate_property(T const& value = T()) {
         auto const index = values.push(value);
-        dirty_properties.set(index);
+        order_up_to_date = false;
         return index;
     }
 
     void free_property(std::size_t const index) {
+        order_up_to_date = false;
         values.erase(index);
     }
 
     void set_property(property_id_t const id, T const& value) {
         assert(values.contains(id));
-        dirty_properties.set(id);
+        order_up_to_date = false;
         values[id] = value;
     }
 
@@ -241,8 +230,7 @@ public:
         } else {
             constraints.insert(it, std::move(constraint));
         }
-
-        dirty_properties.set(id);
+        order_up_to_date = false;
     }
 
 

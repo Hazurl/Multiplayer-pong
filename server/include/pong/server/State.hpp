@@ -97,6 +97,23 @@ public:
     }
 
 
+    user_id_t get_user_id(user_handle_t handle) const {
+        return reinterpret_cast<user_id_t>(get_user(handle).socket.get());
+    }
+
+
+    user_handle_t get_user_handle(user_id_t id) const {
+        for(user_handle_t handle = 0; handle < users.size(); ++handle) {
+            if (reinterpret_cast<user_id_t>(users[handle].socket.get()) == id) {
+                assert(is_valid(handle));
+                return handle;
+            }
+        }
+
+        return invalid_user_handle;
+    }
+
+
     std::size_t number_of_user() const {
         return users.size();
     }

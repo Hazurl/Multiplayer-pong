@@ -24,6 +24,8 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
     pong::server::MainLobbyState main_lobby{ rooms };
     pong::server::NewUserState new_users{ main_lobby };
 
+    sf::Clock clock;
+
     while(!stop) {
         {
             std::lock_guard lk{ clients_mutex };
@@ -35,6 +37,7 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
             clients.clear();
         }
 
+
         new_users.receive_packets();
         main_lobby.receive_packets();
         for(auto& room : rooms) {
@@ -42,6 +45,15 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
                 room->receive_packets();
             }
         }
+
+
+        float dt = clock.restart().asSeconds();
+        for(auto& room : rooms) {
+            if(room) {
+                room->update_game(dt);
+            }
+        }
+
 
         new_users.send_packets();
         main_lobby.send_packets();

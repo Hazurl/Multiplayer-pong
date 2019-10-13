@@ -6,33 +6,52 @@
 #include <pong/client/Common.hpp>
 #include <pong/client/InMainLobby.hpp>
 
+#include <pong/client/gui/Text.hpp>
+
 namespace pong::client {
 
 struct LoginIn : State<LoginIn> {
     using base_t = State<LoginIn>;
 
     sf::Font const& font;
+    gui::Gui<>& gui;
+    gui::RectProperties window_properties;
 
-    LoginIn(socket_ref_t _socket, std::string username, sf::Font const& font) 
-    :   base_t(_socket, {
-            { pong::packet::PacketID::UsernameResponse, &LoginIn::on_username_response }
-        })
-    ,   font{ font }
-    {
+    gui::Text title_txt;
+    gui::Text login_txt;
+    gui::Text pseudo_txt;
+    gui::Text connecting_txt;
+    gui::Text by_hazurl_txt;
+    gui::Text quit_txt;
+    gui::Button quit_button;
+    gui::RoundedRectangle pseudo_cursor;
+    std::size_t cursor_index;
 
-        send(pong::packet::ChangeUsername{ std::move(username) });
+    bool quit;
 
-    }
 
-    Action on_username_response(packet_t packet) {
-        auto res = from_packet<pong::packet::UsernameResponse>(packet).result;
-        std::cout << "UsernameResponse: " << (int)res << '\n';
-        if (res == pong::packet::UsernameResponse::Okay) {
-            return change_state<InMainLobby>(font);
-        }
+    LoginIn(socket_ptr_t _socket, gui::Gui<>& gui, gui::RectProperties window_properties, sf::Font const& font);
 
-        return Abord{};
-    }
+
+    void update_properties(gui::Gui<> const& gui) override;
+    void notify_gui(gui::Gui<>& gui) const override;
+
+
+    Action update(float dt) override;
+    void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
+
+
+    sftk::PropagateEvent on_mouse_button_pressed(sf::Window&, sf::Event::MouseButtonEvent const& b) override;
+    sftk::PropagateEvent on_mouse_button_released(sf::Window&, sf::Event::MouseButtonEvent const& b) override;
+    sftk::PropagateEvent on_mouse_moved(sf::Window&, sf::Event::MouseMoveEvent const& b) override;
+    sftk::PropagateEvent on_key_pressed(sf::Window&, sf::Event::KeyEvent const& b) override;
+    sftk::PropagateEvent on_text_entered(sf::Window&, sf::Event::TextEvent const& b) override;
+
+
+    void on_connection() override;
+
+
+    Action on_username_response(packet_t packet);
 
 };
 
