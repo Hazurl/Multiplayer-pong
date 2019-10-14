@@ -4,7 +4,7 @@
 #include <unordered_set>
 #include <iostream>
 
-#include <pong/client/gui/constraint/Constraint.hpp>
+#include <pong/client/gui/constraint/Solver.hpp>
 
 namespace pong::client::gui {
 

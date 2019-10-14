@@ -372,6 +372,11 @@ sf::Packet& operator >> (sf::Packet& p, GamePacket& game_packet) {
         process(LeaveQueue)
 
 #undef process
+
+        default: {
+            throw std::runtime_error("Unknown packet with ID #" + std::to_string(static_cast<std::underlying_type_t<PacketID>>(id)));
+        }
+
     }
 
     return p;
