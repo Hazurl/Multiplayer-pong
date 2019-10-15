@@ -17,10 +17,10 @@ action::Actions Login::on_window_event(Application& application, WindowEvent con
     return std::visit(Visitor{
         [this] (MouseButtonReleased const& event) {
             if (event.button == sf::Mouse::Button::Left) {
-                if (auto button = graphics.on_click(static_cast<float>(event.x), static_cast<float>(event.y))) {
+                if (auto button = graphics.on_release_click({ static_cast<float>(event.x), static_cast<float>(event.y) })) {
                     switch(*button) {
                         case login::Graphics::Button::Quit:
-                            return action::seq(action::quit())
+                            return action::seq(action::quit());
 
                         default: break;
                     }
@@ -30,8 +30,12 @@ action::Actions Login::on_window_event(Application& application, WindowEvent con
         },
         [this] (MouseButtonPressed const& event) {
             if (event.button == sf::Mouse::Button::Left) {
-                graphics.on_click(static_cast<float>(event.x), static_cast<float>(event.y));
+                graphics.on_click({ static_cast<float>(event.x), static_cast<float>(event.y) });
             }
+            return action::Actions{}; 
+        },
+        [this] (MouseMoved const& event) {
+            graphics.on_hover({ static_cast<float>(event.x), static_cast<float>(event.y) });
             return action::Actions{}; 
         },
         [] (auto const&) {
