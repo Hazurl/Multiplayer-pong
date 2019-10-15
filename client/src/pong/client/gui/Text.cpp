@@ -18,7 +18,7 @@ sf::Vector2f Text::get_offset() const {
 }
 
 
-void Text::free_properties(Gui<>& gui) {
+void Text::free_properties(Allocator<> gui) const {
     gui.free_properties(id, 7);
 }
 

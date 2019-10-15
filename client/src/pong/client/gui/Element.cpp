@@ -8,7 +8,7 @@ void Element::notify_gui(Gui<>&) const {}
 
 RectProperties::RectProperties(Allocator<> gui) : id{ gui.allocate_properties(4) } {}
 
-void RectProperties::free_properties(Allocator<> gui) {
+void RectProperties::free_properties(Allocator<> gui) const {
     gui.free_properties(id, 4);
 }
 

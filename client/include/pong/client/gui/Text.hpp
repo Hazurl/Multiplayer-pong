@@ -41,7 +41,7 @@ public:
         GUI
     */
 
-    void free_properties(Gui<>& gui);
+    void free_properties(Allocator<> gui) const;
 
     property_id_t left_offset() const; // read-only
     property_id_t top_offset() const; // read-only

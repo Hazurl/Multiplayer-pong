@@ -109,6 +109,10 @@ public:
 
         order_up_to_date = false;
         values.erase_multiple(index, count);
+        // Purposely not remove the constraints with this item as a dependdency
+        constraints.erase(std::remove_if(std::begin(constraints), std::end(constraints), [index, count] (auto const& elem) {
+            return elem.id >= index && elem.id < index + count;
+        }), std::end(constraints));
     }
 
     property_id_t allocate_property(T const& value = T()) {
@@ -120,6 +124,10 @@ public:
     void free_property(property_id_t const index) {
         order_up_to_date = false;
         values.erase(index);
+        // Purposely not remove the constraints with this item as a dependdency
+        constraints.erase(std::remove_if(std::begin(constraints), std::end(constraints), [index] (auto const& elem) {
+            return elem.id == index;
+        }), std::end(constraints));
     }
 
     void set_property(property_id_t const id, T const& value) {

@@ -10,7 +10,25 @@ void StateSupervisor::loop() {
 
     while(window.isOpen()) {
 
-        connection.check_connection();
+
+        if (connection.is_connecting()) {
+            auto status = connection.check_connection();
+
+            switch(status) {
+                case net::Connection::Status::Connected: {
+                    process_actions(state->on_connection(make_application()));
+                    break;
+                }
+
+                case net::Connection::Status::ConnectionFailure: {
+                    process_actions(state->on_connection_failure(make_application()));
+                    break;
+                }
+
+                default: break;
+            }
+        }
+
         process_events(clock.restart().asSeconds());
         update_gui();
         draw();
@@ -113,6 +131,7 @@ std::vector<pong::packet::GamePacket> accumulate_packets(net::Connection& connec
 
 
         switch(status) {
+            default:
             case net::Status::Error: {
                 ERROR("Error when using the socket, abording...");
                 throw std::runtime_error("Error when using the socket, abording...");
@@ -123,7 +142,7 @@ std::vector<pong::packet::GamePacket> accumulate_packets(net::Connection& connec
                 break;
             }
 
-            default: {
+            case net::Status::Available: {
                 break;
             }
         }
@@ -150,35 +169,30 @@ void StateSupervisor::process_events(float dt) {
     auto app = make_application();
 
     for(auto window_event : poll_window_events()) {
-        auto actions = state->on_window_event(app, window_event);
-        process_actions(actions);
+        process_actions(state->on_window_event(app, window_event));
     }
 
     for(auto network_event : send_packets()) {
-        auto actions = state->on_send(app, network_event);
-        process_actions(actions);
+        process_actions(state->on_send(app, network_event));
     }
 
     for(auto& network_event : receive_packets()) {
-        auto actions = state->on_receive(app, network_event);
-        process_actions(actions);
+        process_actions(state->on_receive(app, network_event));
     }
 
-    {
-        auto actions = state->on_update(app, dt);
-        process_actions(actions);
-    }
+    process_actions(state->on_update(app, dt));
 }
 
-void StateSupervisor::process_actions(action::Actions& actions) {
+void StateSupervisor::process_actions(action::Actions actions) {
     for(auto& action : actions) {
-        process_action(action);
+        process_action(std::move(action));
     }
 }
 
-void StateSupervisor::process_action(action::Action& action) {
+void StateSupervisor::process_action(action::Action action) {
     std::visit(Visitor{
         [this] (action::ChangeState&& cs) {
+            state->free_properties(gui::Allocator{ gui });
             state = std::move(cs);
         },
         [this] (action::Quit const&) {
@@ -212,7 +226,7 @@ void StateSupervisor::update_gui() {
 void StateSupervisor::draw() {
     window.clear(sf::Color{ 0x3A, 0x3C, 0x46 });
 
-    window.draw(*state);
+    state->draw(make_application(), window, {});
 
     window.display();
 }

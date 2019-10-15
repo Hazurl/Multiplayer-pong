@@ -41,21 +41,22 @@ void Connection::attempt_to_connect(sf::IpAddress const& _addr, unsigned short _
     }, _addr, _port, _timeout);
 }
 
-bool Connection::check_connection() {
+Connection::Status Connection::check_connection() {
     if (is_future_ready(future_socket)) {
         std::unique_ptr<sf::TcpSocket> res = future_socket.get();
         if (!res) {
             ERROR("Couldn't connect to server... Abording...");
             stop_connection();
-            return false;
+            return Connection::Status::ConnectionFailure;
         }
 
         socket = std::move(res);
         SUCCESS("Connected");
 
-        return true;
+        return Connection::Status::Connected;
     }
-    return false;
+
+    return Connection::Status::Connecting;
 }
 
 sf::TcpSocket* Connection::get_socket() {

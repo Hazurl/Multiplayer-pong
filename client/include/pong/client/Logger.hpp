@@ -8,7 +8,7 @@ namespace tinge {
 
 #include <tinge/tinge.hpp>
 
-#define _LOGGER_PREFIX ::tinge::fg::reset, ::tinge::fg::white, '[', __FILE__, ':', __LINE__, ", ", ::tinge::fg::blue, __PRETTY_FUNCTION__, ::tinge::fg::white, "] ", ::tinge::fg::reset, ::tinge::style::reset, '\n', '\t'
+#define _LOGGER_PREFIX ::tinge::fg::reset, ::tinge::fg::white, '[', __FILE__, ':', __LINE__, ", ", ::tinge::fg::blue, __FUNCTION__, ::tinge::fg::white, "] ", ::tinge::fg::reset, ::tinge::style::reset, '\n', '\t'
 
 #define NOTICE(...) (::tinge::println(::tinge::style::bold, ::tinge::fg::white, tinge::detail::symbol::notice, _LOGGER_PREFIX, __VA_ARGS__))
 #define WARN(...) (::tinge::errln(::tinge::style::bold, ::tinge::fg::yellow, tinge::detail::symbol::warn, _LOGGER_PREFIX, __VA_ARGS__))

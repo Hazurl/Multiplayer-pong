@@ -21,15 +21,15 @@ bool PacketQueue::empty() const {
 }
 
 std::pair<Status, std::optional<pong::packet::GamePacket>> PacketQueue::send(sf::TcpSocket& socket) {
-    if (empty()) {
-        WARN("No packet in the queue");
-        return std::make_pair(
-            Status::Available,
-            std::nullopt
-        );
-    }
-
     if (packet.endOfPacket()) {
+        if (empty()) {
+            WARN("No packet in the queue");
+            return std::make_pair(
+                Status::Available,
+                std::nullopt
+            );
+        }
+
         auto const& game_packet = packets.front();
         NOTICE("Prepare packet #", game_packet.index());
         packet.clear();
@@ -55,6 +55,7 @@ std::pair<Status, std::optional<pong::packet::GamePacket>> PacketQueue::send(sf:
         }
 
         case sf::Socket::Status::NotReady: {
+            WARN("Socket not ready to send a packet");
             return std::make_pair(
                 Status::Done,
                 std::nullopt

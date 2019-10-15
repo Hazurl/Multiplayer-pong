@@ -9,7 +9,7 @@ Sprite::Sprite(Allocator<> gui, sf::Texture const& texture)
     setTexture(&texture);
 }
 
-void Sprite::free_properties(Gui<>& gui) {
+void Sprite::free_properties(Allocator<> gui) const {
     gui.free_properties(id, 5);
 }
 

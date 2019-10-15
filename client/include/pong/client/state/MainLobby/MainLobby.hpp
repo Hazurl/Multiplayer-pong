@@ -1,15 +1,15 @@
 #pragma once
 
 #include <pong/client/state/State.hpp>
-#include <pong/client/state/Login/Graphics.hpp>
+#include <pong/client/state/MainLobby/Graphics.hpp>
 
 namespace pong::client::state {
 
-class Login : public State {
+class MainLobby : public State {
 
 public:
 
-    Login(Application app);
+    MainLobby(Application app, std::string username);
 
     action::Actions on_window_event(Application application, WindowEvent const& window_event) override;
     action::Actions on_send(Application application, pong::packet::GamePacket const& game_packet) override;
@@ -28,9 +28,9 @@ public:
 
 private:
 
-    login::Graphics graphics;
+    mainlobby::Graphics graphics;
 
-    std::optional<std::string> username;
+    std::string username;
 
 };
 

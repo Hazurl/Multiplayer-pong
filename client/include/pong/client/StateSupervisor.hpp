@@ -65,8 +65,8 @@ private:
     std::vector<pong::packet::GamePacket> receive_packets();
 
     void process_events(float dt);
-    void process_actions(action::Actions& actions);
-    void process_action(action::Action& action);
+    void process_actions(action::Actions actions);
+    void process_action(action::Action action);
 
     void update_gui();
     void draw();

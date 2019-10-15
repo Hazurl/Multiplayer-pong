@@ -29,7 +29,7 @@ public:
 
     RectProperties(Allocator<> gui);
 
-    void free_properties(Allocator<> gui);
+    void free_properties(Allocator<> gui) const;
 
     property_id_t left() const;
     property_id_t top() const;

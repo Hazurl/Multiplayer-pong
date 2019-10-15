@@ -32,7 +32,7 @@ public:
         GUI
     */
 
-    void free_properties(Gui<>& gui);
+    void free_properties(Allocator<> gui) const;
 
     property_id_t left() const;
     property_id_t top() const;
