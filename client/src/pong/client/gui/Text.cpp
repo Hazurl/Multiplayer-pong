@@ -3,7 +3,7 @@
 namespace pong::client::gui {
 
 
-Text::Text(Gui<>& gui, sf::String const& str, sf::Font const& font, unsigned char size)
+Text::Text(Allocator<> gui, sf::String const& str, sf::Font const& font, unsigned char size)
 :   sf::Text(str, font, size)
 ,   id(gui.allocate_properties(7)) {}
 

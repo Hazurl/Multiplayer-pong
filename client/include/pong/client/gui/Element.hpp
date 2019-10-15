@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pong/client/gui/constraint/Interface.hpp>
+#include <pong/client/gui/constraint/Allocator.hpp>
 
 namespace pong::client::gui {
 
@@ -26,9 +27,9 @@ private:
 
 public:
 
-    RectProperties(Gui<>& gui);
+    RectProperties(Allocator<> gui);
 
-    void free_properties(Gui<>& gui);
+    void free_properties(Allocator<> gui);
 
     property_id_t left() const;
     property_id_t top() const;
@@ -40,7 +41,7 @@ public:
 template<typename T>
 struct RectElement : Element, RectProperties {
 
-    RectElement(Gui<>& gui) : RectProperties(gui) {}
+    RectElement(Allocator<>& gui) : RectProperties(gui) {}
 
     void update_properties(Gui<> const& gui) override {
         static_cast<T*>(this)->setPosition({

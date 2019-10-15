@@ -1,6 +1,8 @@
 #pragma once
 
 #include <pong/client/state/State.hpp>
+#include <pong/client/state/Login/Graphics.hpp>
+#include <pong/client/state/Login/Network.hpp>
 
 namespace pong::client::state {
 
@@ -8,7 +10,7 @@ class Login : public State {
 
 public:
 
-    Login(Application& app, sf::Color color);
+    Login(Application& app);
 
     action::Actions on_window_event(Application& application, WindowEvent const& window_event) override;
     action::Actions on_send(Application& application, pong::packet::GamePacket const& game_packet) override;
@@ -22,7 +24,8 @@ public:
 
 private:
 
-    sf::RectangleShape rect;
+    login::Graphics graphics;
+    login::Network network;
 
 };
 

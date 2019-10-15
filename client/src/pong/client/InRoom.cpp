@@ -7,6 +7,7 @@
 
 #include <pong/client/InRoom.hpp>
 #include <pong/client/InMainLobby.hpp>
+#include <pong/client/gui/constraint/Allocator.hpp>
 
 namespace pong::client {
 
@@ -57,17 +58,17 @@ InRoom::InRoom(socket_ptr_t _socket, gui::Gui<>& _gui, gui::RectProperties _wind
 ,   right_player{ "" }
 ,   spectators_count{ 0 }
 ,   username{ std::move(username) }
-,   versus_txt{ gui, "vs", font, 15 }
-,   left_versus_txt{ gui, "", font, 30 }
-,   right_versus_txt{ gui, "", font, 30 }
-,   score_dash_txt{ gui, "-", font, 40 }
-,   left_score_txt{ gui, "2", font, 80 }
-,   right_score_txt{ gui, "1", font, 80 }
-,   spectator_count_txt{ gui, "0", font, 20 }
+,   versus_txt{ gui::Allocator{ gui }, "vs", font, 15 }
+,   left_versus_txt{ gui::Allocator{ gui }, "", font, 30 }
+,   right_versus_txt{ gui::Allocator{ gui }, "", font, 30 }
+,   score_dash_txt{ gui::Allocator{ gui }, "-", font, 40 }
+,   left_score_txt{ gui::Allocator{ gui }, "2", font, 80 }
+,   right_score_txt{ gui::Allocator{ gui }, "1", font, 80 }
+,   spectator_count_txt{ gui::Allocator{ gui }, "0", font, 20 }
 ,   spectator_texture{}
-,   spectator_spr{ gui, spectator_texture }
-,   quit_txt(gui, "QUIT", font, 20)
-,   quit_button(gui, 
+,   spectator_spr{ gui::Allocator{ gui }, spectator_texture }
+,   quit_txt(gui::Allocator{ gui }, "QUIT", font, 20)
+,   quit_button(gui::Allocator{ gui }, 
         [this] () {
             if (playing_state == Game::Playing::Spectator) {
                 send_notify([this] () {
@@ -82,8 +83,8 @@ InRoom::InRoom(socket_ptr_t _socket, gui::Gui<>& _gui, gui::RectProperties _wind
             sf::Color{ 0x31, 0x33, 0x3a },
             sf::Color{ 0x24, 0x25, 0x29 },
         })
-,   join_queue_txt(gui, "JOIN QUEUE", font, 20)
-,   join_queue_button(gui, 
+,   join_queue_txt(gui::Allocator{ gui }, "JOIN QUEUE", font, 20)
+,   join_queue_button(gui::Allocator{ gui }, 
         [this] () {
             if (playing_state == Game::Playing::Spectator) {
                 send_notify([this] () {
@@ -97,8 +98,8 @@ InRoom::InRoom(socket_ptr_t _socket, gui::Gui<>& _gui, gui::RectProperties _wind
             sf::Color{ 0x31, 0x33, 0x3a },
             sf::Color{ 0x24, 0x25, 0x29 },
         })
-,   leave_queue_txt(gui, "LEAVE QUEUE", font, 20)
-,   leave_queue_button(gui, 
+,   leave_queue_txt(gui::Allocator{ gui }, "LEAVE QUEUE", font, 20)
+,   leave_queue_button(gui::Allocator{ gui }, 
         [this] () {
             if (playing_state == Game::Playing::Spectator) {
                 send_notify([this] () {
@@ -112,8 +113,8 @@ InRoom::InRoom(socket_ptr_t _socket, gui::Gui<>& _gui, gui::RectProperties _wind
             sf::Color{ 0x31, 0x33, 0x3a },
             sf::Color{ 0x24, 0x25, 0x29 },
         })
-,   abandon_txt(gui, "ABANDON", font, 20)
-,   abandon_button(gui, 
+,   abandon_txt(gui::Allocator{ gui }, "ABANDON", font, 20)
+,   abandon_button(gui::Allocator{ gui }, 
         [this] () {
             std::cout << "abandon!\n";
             if (playing_state != Game::Playing::Spectator) {

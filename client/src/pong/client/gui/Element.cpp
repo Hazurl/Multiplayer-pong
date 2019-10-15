@@ -6,9 +6,9 @@ namespace pong::client::gui {
 void Element::update_properties(Gui<> const& gui) {}
 void Element::notify_gui(Gui<>& gui) const {}
 
-RectProperties::RectProperties(Gui<>& gui) : id{ gui.allocate_properties(4) } {}
+RectProperties::RectProperties(Allocator<> gui) : id{ gui.allocate_properties(4) } {}
 
-void RectProperties::free_properties(Gui<>& gui) {
+void RectProperties::free_properties(Allocator<> gui) {
     gui.free_properties(id, 4);
 }
 

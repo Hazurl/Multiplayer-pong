@@ -7,6 +7,7 @@
 #include <pong/client/gui/Button.hpp>
 
 #include <pong/client/InMainLobby.hpp>
+#include <pong/client/gui/constraint/Allocator.hpp>
 
 namespace pong::client {
 
@@ -22,7 +23,7 @@ InMainLobby::InMainLobby(socket_ptr_t _socket, gui::Gui<>& _gui, gui::RectProper
 ,   font{ _font }
 ,   gui{ _gui }
 ,   window_properties{ _window_properties }
-,   button(gui, [this] () { on_button_click(); })
+,   button(gui::Allocator{ gui }, [this] () { on_button_click(); })
 ,   username{ std::move(_username) }
 {
     button.setSize({200, 40});

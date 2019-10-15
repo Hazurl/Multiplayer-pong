@@ -4,6 +4,7 @@
 #include <pong/client/Common.hpp>
 #include <pong/client/InMainLobby.hpp>
 #include <pong/client/LoginIn.hpp>
+#include <pong/client/gui/constraint/Allocator.hpp>
 
 namespace pong::client {
 
@@ -14,13 +15,13 @@ LoginIn::LoginIn(socket_ptr_t _socket, gui::Gui<>& _gui, gui::RectProperties _wi
 ,   font{ _font }
 ,   gui{ _gui }
 ,   window_properties{ _window_properties }
-,   title_txt(gui, "MULTIPLAYER PONG", font)
-,   login_txt(gui, "Login:", font)
-,   pseudo_txt(gui, "", font)
-,   connecting_txt(gui, "Connecting...", font)
-,   by_hazurl_txt(gui, "by Hazurl", font)
-,   quit_txt(gui, "QUIT", font)
-,   quit_button(gui, 
+,   title_txt(gui::Allocator{ gui }, "MULTIPLAYER PONG", font)
+,   login_txt(gui::Allocator{ gui }, "Login:", font)
+,   pseudo_txt(gui::Allocator{ gui }, "", font)
+,   connecting_txt(gui::Allocator{ gui }, "Connecting...", font)
+,   by_hazurl_txt(gui::Allocator{ gui }, "by Hazurl", font)
+,   quit_txt(gui::Allocator{ gui }, "QUIT", font)
+,   quit_button(gui::Allocator{ gui }, 
         [this] () {
             quit = true;
         },

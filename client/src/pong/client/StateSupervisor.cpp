@@ -41,7 +41,7 @@ std::vector<WindowEvent> StateSupervisor::poll_window_events() {
                 break;
             }
             case sf::Event::Resized: {
-                sf::View view({0, 0, event.size.width, event.size.height});
+                sf::View view({0, 0, static_cast<float>(event.size.width), static_cast<float>(event.size.height)});
                 window.setView(view);
 
                 gui.set_property(window_properties.width(), event.size.width);

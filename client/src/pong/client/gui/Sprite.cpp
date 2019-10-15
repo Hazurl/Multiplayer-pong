@@ -3,7 +3,7 @@
 namespace pong::client::gui {
 
 
-Sprite::Sprite(Gui<>& gui, sf::Texture const& texture)
+Sprite::Sprite(Allocator<> gui, sf::Texture const& texture)
 :   sf::RectangleShape()
 ,   id(gui.allocate_properties(5)) {
     setTexture(&texture);

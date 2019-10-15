@@ -117,7 +117,7 @@ public:
         return index;
     }
 
-    void free_property(std::size_t const index) {
+    void free_property(property_id_t const index) {
         order_up_to_date = false;
         values.erase(index);
     }

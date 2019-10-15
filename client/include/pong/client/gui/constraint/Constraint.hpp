@@ -72,10 +72,14 @@ namespace details {
     auto uncurry(std::index_sequence<Is...>) {
         return [] (std::vector<R> const& vec) {
             assert(vec.size() >= std::tuple_size_v<Args> && "The constraint's function provided doesn't not have the same number of parameter as the number of dependencies");
-            if constexpr (std::is_convertible_v<std::vector<R> const&, last_tuple_element_t<Args>>) {
-                return f(vec[Is]..., std::vector<R>(std::begin(vec) + (std::tuple_size_v<Args> - 1), std::end(vec)));
+            if constexpr (std::tuple_size_v<Args> > 0) {
+                if constexpr (std::is_convertible_v<std::vector<R> const&, last_tuple_element_t<Args>>) {
+                    return f(vec[Is]..., std::vector<R>(std::begin(vec) + (std::tuple_size_v<Args> - 1), std::end(vec)));
+                } else {
+                    return f(vec[Is]...);
+                }
             } else {
-                return f(vec[Is]...);
+                return f();
             }
         };
     }
@@ -91,8 +95,15 @@ constrained_func_t<R> uncurry() {
     using F = std::decay_t<decltype(f)>;
     using Args = details::get_args_t<F>;
     constexpr std::size_t Size = std::tuple_size_v<Args>;
-    constexpr bool is_last_a_vector = std::is_convertible_v<std::vector<float> const&, details::last_tuple_element_t<Args>>;
-    return details::uncurry<f, Args, R>(std::make_index_sequence<Size - is_last_a_vector>{});
+    if constexpr (std::tuple_size_v<Args> > 0) {
+        constexpr bool is_last_a_vector = std::is_convertible_v<std::vector<float> const&, details::last_tuple_element_t<Args>>;
+        return details::uncurry<f, Args, R>(std::make_index_sequence<Size - is_last_a_vector>{});
+    } else {
+        return [] (std::vector<R> const& vec) { 
+            assert(vec.size() == 0 && "The constraint's function provided doesn't not have the same number of parameter as the number of dependencies");
+            return f(); 
+        };
+    }
 }
 
 }

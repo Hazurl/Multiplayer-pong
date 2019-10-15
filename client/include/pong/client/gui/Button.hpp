@@ -9,6 +9,7 @@
 
 #include <pong/client/gui/RoundedRectangle.hpp>
 #include <pong/client/gui/Element.hpp>
+#include <pong/client/gui/constraint/Allocator.hpp>
 #include <pong/client/gui/Color.hpp>
 
 #include <functional>
@@ -26,7 +27,10 @@ public:
 
 
     enum class State {
-        Idle, Hovered, Clicked
+        Idle, // not Click + not Hover
+        Hovered, // not Click + Hover
+        Clicked, // Click + not Hover
+        ClickedHovered // Click + Hover
     };
 
 
@@ -58,7 +62,7 @@ public:
     */
 
 
-    Button(Gui<>& gui, std::function<void()> _on_click, Theme _theme = {});
+    Button(Allocator<> gui, std::function<void()> _on_click, Theme _theme = {});
 
 
 
@@ -71,6 +75,10 @@ private:
 
     void change_color();
     void change_state(State _state);
+
+    static bool is_clicked(State state);
+    static bool is_hover(State state);
+    static State make_state(bool hover, bool clicked);
 
 
 
@@ -109,6 +117,10 @@ public:
     sftk::PropagateEvent on_mouse_button_released(sf::Window&, sf::Event::MouseButtonEvent const& b) override;
     sftk::PropagateEvent on_mouse_moved(sf::Window&, sf::Event::MouseMoveEvent const& b) override;
 
+    bool on_click(sf::Vector2f const& position);
+    bool on_release_click(sf::Vector2f const& position);
+    bool on_hover(sf::Vector2f const& position);
+
 
     /* 
         sf::Drawable
@@ -129,7 +141,7 @@ private:
     sftk::Animated<sf::Color> color;
     Theme theme;
     State state;
-    std::function<void()> on_click;
+    std::function<void()> on_click_cb;
 
 
 };

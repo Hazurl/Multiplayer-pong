@@ -21,6 +21,7 @@ namespace pong::client::gui {
 sf::Color const& Button::Theme::get(Button::State state) const {
     switch(state) {
         case Button::State::Idle: return idle;
+        case Button::State::Clicked: return idle;
         case Button::State::Hovered: return hovered;
         default: return clicked;
     }
@@ -29,6 +30,7 @@ sf::Color const& Button::Theme::get(Button::State state) const {
 sf::Color& Button::Theme::get(Button::State state) {
     switch(state) {
         case Button::State::Idle: return idle;
+        case Button::State::Clicked: return idle;
         case Button::State::Hovered: return hovered;
         default: return clicked;
     }
@@ -40,13 +42,13 @@ sf::Color& Button::Theme::get(Button::State state) {
 
 
 
-Button::Button(Gui<>& gui, std::function<void()> _on_click, Button::Theme _theme)
+Button::Button(Allocator<> gui, std::function<void()> _on_click, Button::Theme _theme)
 :   RectElement(gui)
 ,   rectangle({0, 0}, 4)
 ,   color(&color_transition, _theme.idle) 
 ,   theme(_theme)
 ,   state(State::Idle)
-,   on_click(std::move(_on_click))
+,   on_click_cb(std::move(_on_click))
 {}
 
 
@@ -60,8 +62,48 @@ void Button::change_color() {
 
 
 void Button::change_state(Button::State _state) {
-    state = _state;
-    change_color();
+    if (state != _state) {
+        state = _state;
+        change_color();
+    }
+}
+
+bool Button::is_clicked(Button::State state) {
+    switch(state) {
+        case Button::State::Clicked:
+        case Button::State::ClickedHovered: 
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+bool Button::is_hover(Button::State state) {
+    switch(state) {
+        case Button::State::Hovered:
+        case Button::State::ClickedHovered: 
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+Button::State Button::make_state(bool hover, bool clicked) {
+    if (hover && clicked) {
+        return Button::State::ClickedHovered;
+    }
+
+    if (hover) {
+        return Button::State::Hovered;
+    }
+
+    if (clicked) {
+        return Button::State::Clicked;
+    }
+
+    return Button::State::Idle;
 }
 
 
@@ -133,7 +175,7 @@ sftk::PropagateEvent Button::on_mouse_button_released(sf::Window&, sf::Event::Mo
         bool hovering = getTransform().transformRect(rectangle.getGlobalBounds()).contains(static_cast<float>(b.x), static_cast<float>(b.y));
         if (hovering) {
             change_state(State::Hovered);
-            on_click();
+            on_click_cb();
             return false;
         } else {
             change_state(State::Idle);
@@ -156,6 +198,29 @@ sftk::PropagateEvent Button::on_mouse_moved(sf::Window&, sf::Event::MouseMoveEve
     }
 
     return true;
+}
+
+
+
+bool Button::on_click(sf::Vector2f const& position) {
+    bool hovering = getTransform().transformRect(rectangle.getGlobalBounds()).contains(position);
+    change_state(make_state(hovering, true));
+
+    return hovering;
+}
+
+bool Button::on_release_click(sf::Vector2f const& position) {
+    bool hovering = getTransform().transformRect(rectangle.getGlobalBounds()).contains(position);
+    change_state(make_state(hovering, false));
+
+    return hovering;
+}
+
+bool Button::on_hover(sf::Vector2f const& position) {
+    bool hovering = getTransform().transformRect(rectangle.getGlobalBounds()).contains(position);
+    change_state(make_state(hovering, is_clicked(state)));
+
+    return hovering;
 }
 
 

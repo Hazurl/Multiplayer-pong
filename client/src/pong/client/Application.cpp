@@ -7,11 +7,17 @@
 namespace pong::client {
 
 Application::Application(gui::RectProperties _window_properties, net::Connection& _connection, gui::Gui<>& _gui, sf::Font const& _font) 
-:   window_properties{ _window_properties }
+:   Allocator<>{ _gui }
+,   window_properties{ _window_properties }
 ,   connection{ _connection }
-,   gui{ _gui }
 ,   font{ _font }
 {}
+
+
+
+gui::Allocator<>& Application::gui_allocator() {
+    return *this;
+}
 
 
 
@@ -25,28 +31,27 @@ bool Application::is_connecting() const {
 
 
 
-gui::property_id_t Application::allocate_property(float value) {
-    return gui.allocate_property(value);
-}
-
-gui::property_id_t Application::allocate_properties(std::size_t const count) {
-    return gui.allocate_properties(count);
-}
-
-
-
-void Application::free_property(std::size_t const index) {
-    return gui.free_property(index);
-}
-
-void Application::free_properties(gui::property_id_t const index, std::size_t const count) {
-    return gui.free_properties(index, count);
-}
-
-
-
 sf::Font const& Application::get_font() const {
     return font;
+}
+
+
+/*
+float Application::width() const {
+    return gui.get_property(width_property());
+}
+
+float Application::height() const {
+    return gui.get_property(height_property());
+}
+*/
+
+gui::property_id_t Application::width_property() const {
+    return window_properties.width();
+}
+
+gui::property_id_t Application::height_property() const {
+    return window_properties.height();
 }
 
 

@@ -9,6 +9,7 @@
 
 #include <pong/client/gui/RoundedRectangle.hpp>
 #include <pong/client/gui/Element.hpp>
+#include <pong/client/gui/constraint/Allocator.hpp>
 #include <pong/client/gui/Color.hpp>
 
 #include <cmath>
@@ -24,7 +25,7 @@ public:
     */
 
 
-    Sprite(Gui<>& gui, sf::Texture const& texture);
+    Sprite(Allocator<> gui, sf::Texture const& texture);
 
 
     /*

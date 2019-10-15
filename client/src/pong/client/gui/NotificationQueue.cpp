@@ -25,7 +25,7 @@ void NotificationQueue::push(sf::String text) {
 
     auto const theme = Button::Theme();
 
-    notifications.push_back({ Button{ gui, callback, theme }, max_lifetime, id });
+    notifications.push_back({ Button{ Allocator{ gui }, callback, theme }, max_lifetime, id });
     auto& button = notifications.back().button;
     button.setSize({ 50, 20 });
     button.set_rounded_radius(3);
