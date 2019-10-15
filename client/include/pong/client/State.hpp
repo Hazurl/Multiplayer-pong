@@ -60,7 +60,7 @@ struct StateBase : sf::Drawable, sftk::EventListener, gui::Element {
     std::optional<std::pair<packet_t, std::function<Action()>>> current_outgoing_packet;
 
     virtual Action dispatch(pong::packet::PacketID id, packet_t packet) = 0;
-    virtual Action update(float) {}
+    virtual Action update(float) { return Idle{}; }
     virtual void draw(sf::RenderTarget&, sf::RenderStates) const {}
 
     bool is_connected() const {

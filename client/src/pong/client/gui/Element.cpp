@@ -3,8 +3,8 @@
 
 namespace pong::client::gui {
 
-void Element::update_properties(Gui<> const& gui) {}
-void Element::notify_gui(Gui<>& gui) const {}
+void Element::update_properties(Gui<> const&) {}
+void Element::notify_gui(Gui<>&) const {}
 
 RectProperties::RectProperties(Allocator<> gui) : id{ gui.allocate_properties(4) } {}
 

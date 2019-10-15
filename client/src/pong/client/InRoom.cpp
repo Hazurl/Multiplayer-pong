@@ -36,7 +36,7 @@ void Game::update(float dt, Playing playing_state, pong::Input input) {
 
 
 
-InRoom::InRoom(socket_ptr_t _socket, gui::Gui<>& _gui, gui::RectProperties _window_properties, sf::Font const& _font, std::string username) 
+InRoom::InRoom(socket_ptr_t _socket, gui::Gui<>& _gui, gui::RectProperties _window_properties, sf::Font const& _font, std::string _username) 
 :   InRoom::base_t(std::move(_socket), {
         { pong::packet::PacketID::GameState, &InRoom::on_game_state },
         { pong::packet::PacketID::RoomInfo,  &InRoom::on_room_info },
@@ -57,7 +57,7 @@ InRoom::InRoom(socket_ptr_t _socket, gui::Gui<>& _gui, gui::RectProperties _wind
 ,   left_player{ "" }
 ,   right_player{ "" }
 ,   spectators_count{ 0 }
-,   username{ std::move(username) }
+,   username{ std::move(_username) }
 ,   versus_txt{ gui::Allocator{ gui }, "vs", font, 15 }
 ,   left_versus_txt{ gui::Allocator{ gui }, "", font, 30 }
 ,   right_versus_txt{ gui::Allocator{ gui }, "", font, 30 }

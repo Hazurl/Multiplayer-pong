@@ -32,8 +32,6 @@ sf::Vector2f RoundedRectangle::getPoint(std::size_t index) const {
 
     float clamped_radius = std::min(std::min(size.x, size.y) / 2.f, radius);
 
-    constexpr float pi = 3.14159265359;
-    constexpr float quater_pi = 0.78539816339;
     constexpr float _2pi = 6.28318530718;
 
     std::size_t quadrant = index / (additional_precision + 1);
@@ -43,7 +41,7 @@ sf::Vector2f RoundedRectangle::getPoint(std::size_t index) const {
     float x = (std::cos(angle) + 1) * clamped_radius;
     float y = (std::sin(angle) + 1) * clamped_radius;
 
-    if (quadrant == 0  || quadrant == 3) { // Left
+    if (quadrant == 0  || quadrant == 3) { // Right
         x += size.x - clamped_radius * 2.f;
     }
     if (quadrant == 0  || quadrant == 1) { // Bottom
