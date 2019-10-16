@@ -63,6 +63,10 @@ inline Action connect(sf::IpAddress addr, unsigned short port, sf::Time timeout 
     };
 }
 
+inline Actions idle() {
+    return Actions{};
+} 
+
 template<typename...Args>
 inline Actions seq(Args&&...args) {
     Actions actions;

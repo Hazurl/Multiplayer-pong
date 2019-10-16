@@ -6,9 +6,10 @@
 
 namespace pong::client {
 
-Application::Application(gui::RectProperties _window_properties, net::Connection& _connection, gui::Gui<>& _gui, sf::Font const& _font) 
+Application::Application(gui::RectProperties _window_properties, sf::Vector2u _window_size, net::Connection& _connection, gui::Gui<>& _gui, sf::Font const& _font) 
 :   Allocator<>{ _gui }
 ,   window_properties{ _window_properties }
+,   window_size{ _window_size }
 ,   connection{ _connection }
 ,   font{ _font }
 {}
@@ -36,15 +37,15 @@ sf::Font const& Application::get_font() const {
 }
 
 
-/*
-float Application::width() const {
-    return gui.get_property(width_property());
+
+unsigned Application::width() const {
+    return window_size.x;
 }
 
-float Application::height() const {
-    return gui.get_property(height_property());
+unsigned Application::height() const {
+    return window_size.y;
 }
-*/
+
 
 gui::property_id_t Application::width_property() const {
     return window_properties.width();

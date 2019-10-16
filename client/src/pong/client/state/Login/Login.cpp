@@ -29,24 +29,24 @@ action::Actions Login::on_window_event(Application, WindowEvent const& window_ev
                     }
                 }
             }
-            return action::Actions{}; 
+            return action::idle(); 
         },
 
         [this] (MouseButtonPressed const& event) {
             if (event.button == sf::Mouse::Button::Left) {
                 graphics.on_click({ static_cast<float>(event.x), static_cast<float>(event.y) });
             }
-            return action::Actions{}; 
+            return action::idle(); 
         },
 
         [this] (MouseMoved const& event) {
             graphics.on_hover({ static_cast<float>(event.x), static_cast<float>(event.y) });
-            return action::Actions{}; 
+            return action::idle(); 
         },
 
         [this] (TextEntered const& event) {
             graphics.on_character_entered(event.unicode);
-            return action::Actions{}; 
+            return action::idle(); 
         },
 
         [this] (KeyPressed const& event) {
@@ -65,17 +65,17 @@ action::Actions Login::on_window_event(Application, WindowEvent const& window_ev
                 }
             }
 
-            return action::Actions{}; 
+            return action::idle(); 
         },
 
         [] (auto const&) {
-            return action::Actions{};
+            return action::idle();
         }
     }, window_event);
 }
 
 action::Actions Login::on_send(Application, pong::packet::GamePacket const&) {
-    return action::Actions{};
+    return action::idle();
 }
 
 action::Actions Login::on_receive(Application app, pong::packet::GamePacket const& game_packet) {
@@ -85,16 +85,16 @@ action::Actions Login::on_receive(Application app, pong::packet::GamePacket cons
             return action::seq(action::change_state<MainLobby>(app, std::move(*username)));
         } else {
             ERROR("Invalid username");
-            return action::Actions{};
+            return action::idle();
         }
     }
 
-    return action::Actions{};
+    return action::idle();
 }
 
 action::Actions Login::on_update(Application app, float dt) {
     graphics.update_animations(app, dt);
-    return action::Actions{};
+    return action::idle();
 }
 
 action::Actions Login::on_connection(Application) {
@@ -107,13 +107,13 @@ action::Actions Login::on_connection(Application) {
 action::Actions Login::on_connection_failure(Application) {
     ERROR("Connection Failure");
     username = std::nullopt;
-    return action::Actions{};
+    return action::idle();
 }
 
 action::Actions Login::on_disconnection(Application) {
     ERROR("Unexpected disconnection");
     username = std::nullopt;
-    return action::Actions{};
+    return action::idle();
 }
 
 void Login::notify_gui(gui::Gui<>& gui) const {

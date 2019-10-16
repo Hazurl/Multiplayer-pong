@@ -3,12 +3,12 @@
 namespace pong::client::state::login {
 
 Graphics::Graphics(Application app)
-:   title_txt(app.gui_allocator(), "MULTIPLAYER PONG", app.get_font())
-,   login_txt(app.gui_allocator(), "Login:", app.get_font())
-,   pseudo_txt(app.gui_allocator(), "", app.get_font())
-,   connecting_txt(app.gui_allocator(), "Connecting...", app.get_font())
-,   by_hazurl_txt(app.gui_allocator(), "by Hazurl", app.get_font())
-,   quit_txt(app.gui_allocator(), "QUIT", app.get_font(), 20)
+:   title_txt(app.gui_allocator(), "MULTIPLAYER PONG", app.get_font(), 52)
+,   login_txt(app.gui_allocator(), "Login:", app.get_font(), 24)
+,   pseudo_txt(app.gui_allocator(), "", app.get_font(), 36)
+,   connecting_txt(app.gui_allocator(), "Connecting...", app.get_font(), 24)
+,   by_hazurl_txt(app.gui_allocator(), "by Hazurl", app.get_font(), 16)
+,   quit_txt(app.gui_allocator(), "QUIT", app.get_font(), 16)
 ,   quit_button(
         app.gui_allocator(), 
         [] () {},
@@ -34,10 +34,6 @@ Graphics::Graphics(Application app)
         return window_height / 4.f - height / 2.f;
     }>(title_txt.top(), { title_txt.size(), app.height_property() });
 
-    app.set_constraint<[] (float window_height) {
-        return window_height / 10.f;
-    }>(title_txt.size(), { app.height_property() });
-
 
     //////////////
     // Login
@@ -52,10 +48,6 @@ Graphics::Graphics(Application app)
     app.set_constraint<[] (float window_height) {
         return  window_height * 0.6f;
     }>(login_txt.top(), { app.height_property() });
-
-    app.set_constraint<[] (float window_height) {
-        return window_height / 25.f;
-    }>(login_txt.size(), { app.height_property() });
 
 
     //////////////
@@ -72,10 +64,6 @@ Graphics::Graphics(Application app)
         return login_top + login_height + window_height / 40.f;
     }>(pseudo_txt.top(), { login_txt.top(), login_txt.size(), app.height_property() });
 
-    app.set_constraint<[] (float window_height) {
-        return window_height / 20.f;
-    }>(pseudo_txt.size(), { app.height_property() });
-
 
     //////////////
     // Connecting
@@ -90,10 +78,6 @@ Graphics::Graphics(Application app)
     app.set_constraint<[] (float pseudo_top, float pseudo_size, float window_height) {
         return pseudo_top + pseudo_size + window_height / 40.f;
     }>(connecting_txt.top(), { pseudo_txt.top(), pseudo_txt.size(), app.height_property() });
-
-    app.set_constraint<[] (float window_height) {
-        return window_height / 25.f;
-    }>(connecting_txt.size(), { app.height_property() });
 
 
     //////////////
@@ -110,10 +94,6 @@ Graphics::Graphics(Application app)
         return window_height - 10.f - height;
     }>(by_hazurl_txt.top(), { by_hazurl_txt.size(), app.height_property() });
 
-    app.set_constraint<[] (float window_height) {
-        return window_height / 40.f;
-    }>(by_hazurl_txt.size(), { app.height_property() });
-
 
 
     //////////////
@@ -127,7 +107,7 @@ Graphics::Graphics(Application app)
     }>(quit_txt.left(), { quit_txt.left_offset(), quit_txt.width(), app.width_property() });
 
     app.set_constraint<[] (float top_offset) {
-        return top_offset + 10.f;
+        return 10.f - top_offset;
     }>(quit_txt.top(), { quit_txt.top_offset()});
 
 

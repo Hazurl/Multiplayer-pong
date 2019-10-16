@@ -44,7 +44,7 @@ void StateSupervisor::load_fonts() {
 }
 
 Application StateSupervisor::make_application() {
-    return Application(window_properties, connection, gui, font);
+    return Application(window_properties, window.getSize(), connection, gui, font);
 }
 
 std::vector<WindowEvent> StateSupervisor::poll_window_events() {

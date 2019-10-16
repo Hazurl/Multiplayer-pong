@@ -24,54 +24,69 @@ action::Actions MainLobby::on_window_event(Application, WindowEvent const& windo
                             NOTICE("Pressed Quit button");
                             return action::seq(action::quit());
 
+                        case mainlobby::Graphics::Button::CreateRoom:
+                            NOTICE("Pressed Create room button");
+                            return action::seq(action::send(pong::packet::CreateRoom{}));
+
                         default: break;
                     }
                 }
             }
-            return action::Actions{}; 
+            return action::idle(); 
         },
 
         [this] (MouseButtonPressed const& event) {
             if (event.button == sf::Mouse::Button::Left) {
                 graphics.on_click({ static_cast<float>(event.x), static_cast<float>(event.y) });
             }
-            return action::Actions{}; 
+            return action::idle(); 
         },
 
         [this] (MouseMoved const& event) {
             graphics.on_hover({ static_cast<float>(event.x), static_cast<float>(event.y) });
-            return action::Actions{}; 
+            return action::idle(); 
         },
 
         [] (auto const&) {
-            return action::Actions{};
+            return action::idle();
         }
     }, window_event);
 }
 
-action::Actions MainLobby::on_send(Application, pong::packet::GamePacket const&) {
-    return action::Actions{};
+action::Actions MainLobby::on_send(Application, pong::packet::GamePacket const& game_packet) {
+    if (std::holds_alternative<pong::packet::CreateRoom>(game_packet)) {
+        NOTICE("Change state to spectator");
+        //return action::seq(action::change_state<Spectator>(std::move(username)));
+    }
+    return action::idle();
 }
 
 action::Actions MainLobby::on_receive(Application, pong::packet::GamePacket const& game_packet) {
-    return action::Actions{};
+    return std::visit(Visitor{
+        [this] (pong::packet::LobbyInfo const& /* lobby_info */) {
+            NOTICE("Received Lobby info");
+            return action::idle();
+        },
+
+        [] (auto const&) { return action::idle(); }
+    }, game_packet);
 }
 
 action::Actions MainLobby::on_update(Application app, float dt) {
     graphics.update_animations(app, dt);
-    return action::Actions{};
+    return action::idle();
 }
 
 action::Actions MainLobby::on_connection(Application) {
-    return action::Actions{};
+    return action::idle();
 }
 
 action::Actions MainLobby::on_connection_failure(Application) {
-    return action::Actions{};
+    return action::idle();
 }
 
 action::Actions MainLobby::on_disconnection(Application) {
-    return action::Actions{};
+    return action::idle();
 }
 
 void MainLobby::notify_gui(gui::Gui<>& gui) const {

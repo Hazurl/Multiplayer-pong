@@ -15,6 +15,7 @@ private:
 
     std::queue<pong::packet::GamePacket> packets;
     sf::Packet packet;
+    bool partially_send = false;
 
 public:
 

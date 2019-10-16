@@ -6,6 +6,8 @@
 #include <pong/client/gui/Text.hpp>
 #include <pong/client/Application.hpp>
 
+#include <sftk/animated/Animated.hpp>
+
 #include <optional>
 #include <string>
 
@@ -18,12 +20,13 @@ private:
     gui::Text by_hazurl_txt;
     gui::Text quit_txt;
     gui::Button quit_button;
-
+    gui::Text create_room_txt;
+    gui::Button create_room_button;
 
 public:
 
     enum class Button {
-        Quit
+        Quit, CreateRoom
     };
 
     Graphics(Application app);
