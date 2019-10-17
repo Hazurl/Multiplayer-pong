@@ -7,6 +7,16 @@ float normalize_input(Input input) {
            input == Input::Up ? -1.f : 1.f;
 }
 
+Ball::Ball() 
+:   position{ meta::ball::bounds_x / 2.f, meta::ball::bounds_y / 2.f }
+,   speed{ meta::ball::max_speed, meta::ball::max_speed }
+{}
+
+Ball::Ball(sf::Vector2f const& _position, sf::Vector2f const& _speed) 
+:   position{ _position }
+,   speed{ _speed }
+{}
+
 CollisionEvent Ball::update(float dt, float pad_left, float pad_right, sf::Vector2f const& boundaries, float padding, float pad_height, float pad_width, float ball_radius) {
     position += dt * speed;
     auto event = CollisionEvent::None;
@@ -70,6 +80,16 @@ CollisionEvent Ball::update(float dt, float pad_left, float pad_right, sf::Vecto
 
     return event;
 }
+
+Pad::Pad() 
+:   y{ (meta::pad::bounds_y - meta::pad::width) / 2.f }
+,   speed{ 0.0f }
+{}
+
+Pad::Pad(float _y, float _speed) 
+:   y{ _y }
+,   speed{ _speed }
+{}
 
 void Pad::update(float dt, Input input, float max_speed, float board_height) {
     speed = max_speed * normalize_input(input);
