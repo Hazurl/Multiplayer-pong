@@ -10,11 +10,24 @@ namespace pong::server {
 struct MainLobbyState : public State<MainLobbyState, user_t> {
     MainLobbyState(std::vector<std::unique_ptr<RoomState>>& _rooms) : State({
         // Receive
-        { pong::packet::PacketID::CreateRoom, &MainLobbyState::on_create_room },
-        { pong::packet::PacketID::EnterRoom, &MainLobbyState::on_enter_room }
+        { id_of(pong::packet::client::CreateRoom{}), &MainLobbyState::on_create_room },
+        { id_of(pong::packet::client::EnterRoom{}), &MainLobbyState::on_enter_room }
     }), rooms{ _rooms } {}
 
     std::vector<std::unique_ptr<RoomState>>& rooms;
+
+    void update_rooms() {
+        unsigned id{ 0 };
+        for(auto& room : rooms) {
+            if (room && room->is_empty()) {
+                std::cout << "update_rooms: Send OldRoom\n";
+                broadcast(pong::packet::server::OldRoom{ id });
+                room = nullptr;
+            }
+
+            ++id;
+        }
+    }
 
     std::vector<int> get_room_ids() const {
         std::vector<int> room_ids;
@@ -66,8 +79,8 @@ struct MainLobbyState : public State<MainLobbyState, user_t> {
         }
 
         std::cout << "Send NewRoom\n";
-        broadcast_other(handle, pong::packet::NewRoom{
-            static_cast<int>(room_id)
+        broadcast_other(handle, pong::packet::server::NewRoom{
+            static_cast<unsigned>(room_id)
         });
 
 
@@ -80,11 +93,11 @@ struct MainLobbyState : public State<MainLobbyState, user_t> {
 
 
     Action on_enter_room(user_handle_t handle, packet_t packet) {
-        auto room_id = static_cast<std::size_t>(from_packet<pong::packet::EnterRoom>(packet).id);
+        auto room_id = static_cast<std::size_t>(from_packet<pong::packet::client::EnterRoom>(packet).id);
         if (room_id < rooms.size() && rooms[room_id] != nullptr) {
             std::cout << "Send EnterRoomResponse\n";
-            send(handle, pong::packet::EnterRoomResponse{
-                pong::packet::EnterRoomResponse::Result::Okay
+            send(handle, pong::packet::server::EnterRoomResponse{
+                pong::packet::server::EnterRoomResponse::Result::Okay
             });
 
             return order_change_state(
@@ -95,8 +108,8 @@ struct MainLobbyState : public State<MainLobbyState, user_t> {
             
         } else {
             std::cout << "Send EnterRoomResponse\n";
-            send(handle, pong::packet::EnterRoomResponse{
-                pong::packet::EnterRoomResponse::Result::InvalidID
+            send(handle, pong::packet::server::EnterRoomResponse{
+                pong::packet::server::EnterRoomResponse::Result::InvalidID
             });
         }
 
@@ -110,12 +123,12 @@ struct MainLobbyState : public State<MainLobbyState, user_t> {
         auto usernames = get_usernames();
 
         std::cout << "Send LobbyInfo\n";
-        send(handle, pong::packet::LobbyInfo{
+        send(handle, pong::packet::server::LobbyInfo{
             std::move(usernames), std::move(room_ids)
         });
 
         std::cout << "Send NewUser\n";
-        broadcast_other(handle, pong::packet::NewUser{
+        broadcast_other(handle, pong::packet::server::NewUser{
             get_user_data(handle)
         });
     }
@@ -123,8 +136,8 @@ struct MainLobbyState : public State<MainLobbyState, user_t> {
 
 
     void on_user_leave(user_handle_t handle) {
-        std::cout << "Send OldUser\n";
-        broadcast_other(handle, pong::packet::OldUser{
+        std::cout << "MainLobby::on_user_leave: Send OldUser\n";
+        broadcast_other(handle, pong::packet::server::OldUser{
             get_user_data(handle)
         });
     }

@@ -87,10 +87,4 @@ using decltype_on_user_enter = decltype(&S::on_user_enter);
 
 
 
-struct PacketIDHasher {
-    std::size_t operator()(pong::packet::PacketID const& p) const {
-        return static_cast<std::size_t>(p);
-    }
-};
-
 }

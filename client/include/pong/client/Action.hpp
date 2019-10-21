@@ -4,7 +4,7 @@
 #include <variant>
 #include <memory>
 
-#include <multipong/Packets.hpp>
+#include <pong/packet/Client.hpp>
 
 namespace pong::client::state {
 
@@ -19,7 +19,7 @@ struct Quit{};
 
 struct Disconnect{};
 
-using Send = pong::packet::GamePacket;
+using Send = pong::packet::client::Any;
 
 using ChangeState = std::unique_ptr<state::State>;
 
@@ -54,7 +54,7 @@ inline Action disconnect() {
 
 template<typename...Args>
 inline Action send(Args&&...args) {
-    return pong::packet::GamePacket{ std::forward<Args>(args)... };
+    return pong::packet::client::Any{ std::forward<Args>(args)... };
 }
 
 inline Action connect(sf::IpAddress addr, unsigned short port, sf::Time timeout = sf::Time::Zero) {

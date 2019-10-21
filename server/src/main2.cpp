@@ -48,6 +48,7 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
 
 
         float dt = clock.restart().asSeconds();
+        main_lobby.update_rooms();
         for(auto& room : rooms) {
             if(room) {
                 room->update_game(dt);

@@ -19,6 +19,10 @@
 #include <multipong/Game.hpp>
 #include <multipong/Packets.hpp>
 
+#include <pong/packet/Client.hpp>
+#include <pong/packet/Server.hpp>
+#include <multipong/Game.hpp>
+
 #include <pong/server/Common.hpp>
 
 namespace pong::server {
@@ -30,8 +34,8 @@ struct StateBase {
     using receiver_t = Action (C::*)(user_handle_t, packet_t);
     using sender_t = Action (C::*)(user_handle_t);
 
-    using receiver_map_t = std::unordered_map<pong::packet::PacketID, receiver_t, PacketIDHasher>;
-    using sender_map_t = std::unordered_map<pong::packet::PacketID, sender_t, PacketIDHasher>;
+    using receiver_map_t = std::unordered_map<pong::packet::id_t, receiver_t>;
+    using sender_map_t = std::unordered_map<pong::packet::id_t, sender_t>;
 
     using on_user_enter_t = void (C::*)(user_handle_t);
     using on_user_leave_t = void (C::*)(user_handle_t);
@@ -179,7 +183,7 @@ public:
     }
 
 
-    std::optional<Action> invoke_receiver(pong::packet::PacketID packet_id, user_handle_t handle, sf::Packet packet) {
+    std::optional<Action> invoke_receiver(pong::packet::id_t packet_id, user_handle_t handle, sf::Packet packet) {
         if (has_receiver_for(packet_id)) {
             return (static_cast<C*>(this)->*receivers[packet_id])(handle, packet);
         } else {
@@ -187,7 +191,7 @@ public:
         }
     }
 
-    bool has_receiver_for(pong::packet::PacketID packet_id) const {
+    bool has_receiver_for(pong::packet::id_t packet_id) const {
         return receivers.count(packet_id);
     }
 
@@ -337,7 +341,7 @@ private:
             }
 
             case sf::Socket::Done: {
-                auto packet_id = from_packet<pong::packet::PacketID>(packet); 
+                auto packet_id = from_packet<pong::packet::id_t>(packet); 
 
                 auto action = base_t::invoke_receiver(packet_id, handle, packet);
                 if (action) {

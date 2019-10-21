@@ -31,6 +31,10 @@ enum class Input {
     Idle = 0, Up = 1, Down = 2
 };
 
+enum class Side {
+    Left, Right
+};
+
 enum class CollisionEvent {
     LeftBoundary,
     RightBoundary,
@@ -46,8 +50,8 @@ struct Pad {
     Pad();
     Pad(float y, float speed);
 
-    void update(float dt, Input input, float max_speed = meta::pad::max_speed, float board_height = meta::pad::height);
-    void update(float dt, float board_height = meta::pad::height);
+    void update(float dt, Input input, float max_speed = meta::pad::max_speed, float board_height = meta::pad::bounds_y);
+    void update(float dt, float board_height = meta::pad::bounds_y);
 };
 
 bool operator==(Pad const& lhs, Pad const& rhs);

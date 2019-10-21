@@ -2,6 +2,9 @@
 
 #include <sftk/print/Printer.hpp>
 
+#include <boost/stacktrace.hpp>
+
+
 namespace tinge {
     using sftk::operator<<;
 }
@@ -14,3 +17,12 @@ namespace tinge {
 #define WARN(...) (::tinge::errln(::tinge::style::bold, ::tinge::fg::yellow, tinge::detail::symbol::warn, _LOGGER_PREFIX, __VA_ARGS__))
 #define ERROR(...) (::tinge::errln(::tinge::style::bold, ::tinge::fg::red, tinge::detail::symbol::error, _LOGGER_PREFIX, __VA_ARGS__))
 #define SUCCESS(...) (::tinge::println(::tinge::style::bold, ::tinge::fg::green, tinge::detail::symbol::success, _LOGGER_PREFIX, __VA_ARGS__))
+
+namespace pong::client {
+
+template<std::size_t N = static_cast<std::size_t>(-1)>
+void print_trace() {
+    WARN("Stack trace:\n", boost::stacktrace::stacktrace(2, N));
+}
+
+}

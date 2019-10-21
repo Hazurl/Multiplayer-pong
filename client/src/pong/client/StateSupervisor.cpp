@@ -110,14 +110,14 @@ std::vector<WindowEvent> StateSupervisor::poll_window_events() {
     return window_events;
 }
 
-template<typename F, typename G>
-std::vector<pong::packet::GamePacket> accumulate_packets(net::Connection& connection, F&& f, G&& g) {
+template<typename A, typename F, typename G>
+std::vector<A> accumulate_packets(net::Connection& connection, F&& f, G&& g) {
     if (!connection.is_connected()) {
         return {};
     }
 
 
-    std::vector<pong::packet::GamePacket> packets;
+    std::vector<A> packets;
     bool is_done = false;
     sf::TcpSocket& socket = *connection.get_socket();
 
@@ -152,8 +152,8 @@ std::vector<pong::packet::GamePacket> accumulate_packets(net::Connection& connec
 }
 
 
-std::vector<pong::packet::GamePacket> StateSupervisor::send_packets() {
-    return accumulate_packets(connection, [this] (auto& socket) {
+std::vector<pong::packet::client::Any> StateSupervisor::send_packets() {
+    return accumulate_packets<pong::packet::client::Any>(connection, [this] (auto& socket) {
         return packet_queue.send(socket);
     },
     [this] {
@@ -161,8 +161,8 @@ std::vector<pong::packet::GamePacket> StateSupervisor::send_packets() {
     });
 }
 
-std::vector<pong::packet::GamePacket> StateSupervisor::receive_packets() {
-    return accumulate_packets(connection, net::receive, [] { return false; });
+std::vector<pong::packet::server::Any> StateSupervisor::receive_packets() {
+    return accumulate_packets<pong::packet::server::Any>(connection, net::receive, [] { return false; });
 }
 
 void StateSupervisor::process_events(float dt) {

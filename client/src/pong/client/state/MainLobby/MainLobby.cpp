@@ -27,7 +27,7 @@ action::Actions MainLobby::on_window_event(Application, WindowEvent const& windo
 
                         case mainlobby::Graphics::Button::CreateRoom:
                             NOTICE("Pressed Create room button");
-                            return action::seq(action::send(pong::packet::CreateRoom{}));
+                            return action::seq(action::send(pong::packet::client::CreateRoom{}));
 
                         default: break;
                     }
@@ -48,25 +48,45 @@ action::Actions MainLobby::on_window_event(Application, WindowEvent const& windo
             return action::idle(); 
         },
 
+        [this] (KeyPressed const& event) {
+            if (event.code == sf::Keyboard::Space) {
+                return action::seq(action::send(pong::packet::client::EnterRoom{ 0 }));
+            }
+            return action::idle();
+        },
+
         [] (auto const&) {
             return action::idle();
         }
     }, window_event);
 }
 
-action::Actions MainLobby::on_send(Application app, pong::packet::GamePacket const& game_packet) {
-    if (std::holds_alternative<pong::packet::CreateRoom>(game_packet)) {
-        NOTICE("Change state to spectator");
-        return action::seq(action::change_state<Room>(app, std::move(username)));
-    }
-    return action::idle();
+action::Actions MainLobby::on_send(Application app, pong::packet::client::Any const& game_packet) {
+    return std::visit(Visitor{
+        [&] (pong::packet::client::CreateRoom const& /* create_room */) {
+            NOTICE("Change state to spectator");
+            return action::seq(action::change_state<Room>(app, std::move(username)));
+        },
+
+        [] (auto const&) { return action::idle(); }
+    }, game_packet);
 }
 
-action::Actions MainLobby::on_receive(Application, pong::packet::GamePacket const& game_packet) {
+action::Actions MainLobby::on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor{
-        [this] (pong::packet::LobbyInfo const& /* lobby_info */) {
+        [this] (pong::packet::server::LobbyInfo const& /* lobby_info */) {
             NOTICE("Received Lobby info");
             return action::idle();
+        },
+
+        [&] (pong::packet::server::EnterRoomResponse const& response) {
+            if (response.result == pong::packet::server::EnterRoomResponse::Okay) {
+                NOTICE("Change state to spectator");
+                return action::seq(action::change_state<Room>(app, std::move(username)));
+            } else {
+                WARN("EnterRoomResponse #", static_cast<int>(response.result));
+                return action::idle();
+            }
         },
 
         [] (auto const&) { return action::idle(); }

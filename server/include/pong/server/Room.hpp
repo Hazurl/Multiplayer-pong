@@ -43,10 +43,10 @@ struct Game {
 
     bool force_refresh{ false };
 
-    void update(float dt) {
-        ball.update(dt, pad_left.y, pad_right.y, { boundaries_x, boundaries_y }, pad_padding, pad_height, pad_width, ball_radius);
+    pong::CollisionEvent update(float dt) {
         pad_left.update(dt, input_left, pad_max_speed, pad_boundary);
         pad_right.update(dt, input_right, pad_max_speed, pad_boundary);
+        return ball.update(dt, pad_left.y, pad_right.y, { boundaries_x, boundaries_y }, pad_padding, pad_height, pad_width, ball_radius);
     }
 };
 
@@ -54,14 +54,14 @@ struct RoomState : public State<RoomState, user_t> {
     RoomState(MainLobbyState& _main_lobby) : State({
 
         // Receive
-        { pong::packet::PacketID::Input, &RoomState::on_input },
-        { pong::packet::PacketID::Abandon, &RoomState::on_abandon },
-        { pong::packet::PacketID::EnterQueue, &RoomState::on_enter_queue },
-        { pong::packet::PacketID::LeaveQueue, &RoomState::on_leave_queue },
-        { pong::packet::PacketID::LeaveRoom, &RoomState::on_leave_room }
+        { id_of(pong::packet::client::Input{}), &RoomState::on_input },
+        { id_of(pong::packet::client::Abandon{}), &RoomState::on_abandon },
+        { id_of(pong::packet::client::EnterQueue{}), &RoomState::on_enter_queue },
+        { id_of(pong::packet::client::LeaveQueue{}), &RoomState::on_leave_queue },
+        { id_of(pong::packet::client::LeaveRoom{}), &RoomState::on_leave_room }
 
 
-    }), main_lobby{ _main_lobby }, left_player{ invalid_user_id }, right_player{ invalid_user_id } {}
+    }), main_lobby{ _main_lobby }, left_player{ invalid_user_id }, right_player{ invalid_user_id }, score{0, 0} {}
 
     /*
         [CLIENT] Send LeaveRoom, EnterQueue, LeaveQueue
@@ -83,6 +83,7 @@ struct RoomState : public State<RoomState, user_t> {
     static constexpr float game_state_packet_interval = 0.1; 
 
     Game game;
+    pong::packet::server::Score score;
 
 
     void update_players() {
@@ -95,16 +96,17 @@ struct RoomState : public State<RoomState, user_t> {
             auto handle = get_user_handle(id);
 
             std::cout << "Send NewPlayer\n";
-            broadcast_other(handle, pong::packet::NewPlayer{
-                pong::packet::NewPlayer::Side::Left,
+            broadcast_other(handle, pong::packet::server::NewPlayer{
+                pong::Side::Left,
                 get_user_data(handle)
             });
             std::cout << "Send BePlayer\n";
-            send(handle, pong::packet::BePlayer{
-                pong::packet::BePlayer::Side::Left
+            send(handle, pong::packet::server::BePlayer{
+                pong::Side::Left
             });
 
             game = Game{};
+            score = { 0, 0 };
             
             if (queue.empty()) return;
         }
@@ -118,30 +120,46 @@ struct RoomState : public State<RoomState, user_t> {
             auto handle = get_user_handle(id);
 
             std::cout << "Send NewPlayer\n";
-            broadcast_other(handle, pong::packet::NewPlayer{
-                pong::packet::NewPlayer::Side::Right,
+            broadcast_other(handle, pong::packet::server::NewPlayer{
+                pong::Side::Right,
                 get_user_data(handle)
             });
             std::cout << "Send BePlayer\n";
-            send(handle, pong::packet::BePlayer{
-                pong::packet::BePlayer::Side::Right
+            send(handle, pong::packet::server::BePlayer{
+                pong::Side::Right
             });
 
             game = Game{};
+            score = { 0, 0 };
         }
     }
 
 
     void update_game(float dt) {
-        game.update(dt);
+        if (left_player != invalid_user_id && right_player != invalid_user_id) {
+            auto event = game.update(dt);
+            if (event == pong::CollisionEvent::LeftBoundary) {
+                ++score.left;
+                broadcast(score);
+                game = Game{};
 
+                // force sending packet GameState
+                time = game_state_packet_interval;
+            }
+            else if (event == pong::CollisionEvent::RightBoundary) {
+                ++score.right;
+                broadcast(score);
+                game = Game{};
 
-        time += dt;
+                // force sending packet GameState
+                time = game_state_packet_interval;
+            }
 
-        if (time > game_state_packet_interval) {
-            time -= game_state_packet_interval;
-            if (left_player != invalid_user_id && right_player != invalid_user_id) {
-                broadcast(pong::packet::GameState {
+            time += dt;
+
+            if (time > game_state_packet_interval) {
+                time -= game_state_packet_interval;
+                broadcast(pong::packet::server::GameState {
                     game.ball,
                     game.pad_left,
                     game.pad_right
@@ -156,12 +174,12 @@ struct RoomState : public State<RoomState, user_t> {
 
         if (id == left_player) {
             std::cout << "Send OldPlayer\n";
-            broadcast_other(handle, pong::packet::OldPlayer{
-                pong::packet::OldPlayer::Side::Left,
+            broadcast_other(handle, pong::packet::server::OldPlayer{
+                pong::Side::Left,
                 get_user_data(handle)
             });
             std::cout << "Send NewUser\n";
-            broadcast_other(handle, pong::packet::NewUser{
+            broadcast_other(handle, pong::packet::server::NewUser{
                 get_user_data(handle)
             });
             left_player = invalid_user_id;
@@ -170,8 +188,8 @@ struct RoomState : public State<RoomState, user_t> {
         }
         else if (id == right_player) {
             std::cout << "Send OldPlayer\n";
-            broadcast_other(handle, pong::packet::OldPlayer{
-                pong::packet::OldPlayer::Side::Right,
+            broadcast_other(handle, pong::packet::server::OldPlayer{
+                pong::Side::Right,
                 get_user_data(handle)
             });
             std::cout << "Send NewUser\n";
@@ -223,12 +241,12 @@ struct RoomState : public State<RoomState, user_t> {
         std::cout << "! Recieved input from handle ID#" << id << '\n';
         if (id == left_player) {
             std::cout << "Received Left input\n";
-            auto input = from_packet<pong::packet::Input>(packet);
+            auto input = from_packet<pong::packet::client::Input>(packet);
             game.input_left = input.input;
         }
         else if (id == right_player) {
             std::cout << "Received Right input\n";
-            auto input = from_packet<pong::packet::Input>(packet);
+            auto input = from_packet<pong::packet::client::Input>(packet);
             game.input_right = input.input;
         }
         else {
@@ -246,7 +264,7 @@ struct RoomState : public State<RoomState, user_t> {
 
     void on_user_enter(user_handle_t handle) {
         std::cout << "Send NewUser\n";
-        broadcast_other(handle, pong::packet::NewUser{
+        broadcast_other(handle, pong::packet::server::NewUser{
             get_user_data(handle)
         });
 
@@ -256,7 +274,10 @@ struct RoomState : public State<RoomState, user_t> {
 
 
         for(user_handle_t h{ 0 }; h < number_of_user(); ++h) {
+            std::cout << "### Check handle #" << h << '\n';
+            std::cout << is_valid(h) << ", " << (get_user_id(h) != left_player) << ", " << (get_user_id(h) != right_player) << ", " << (h != handle) << '\n';
             if (is_valid(h) && get_user_id(h) != left_player && get_user_id(h) != right_player && h != handle) {
+                std::cout << "Push " << get_user_data(h) << '\n';
                 spectators.push_back(get_user_data(h));
             }
         }
@@ -265,7 +286,7 @@ struct RoomState : public State<RoomState, user_t> {
         std::cout << "Send RoomInfo\n";
         auto left_player_handle = get_user_handle(left_player);
         auto right_player_handle = get_user_handle(right_player);
-        send(handle, pong::packet::RoomInfo{
+        send(handle, pong::packet::server::RoomInfo{
             is_valid(left_player_handle) ? get_user_data(left_player_handle) : "",
             is_valid(right_player_handle) ? get_user_data(right_player_handle) : "",
             std::move(spectators)
@@ -281,8 +302,8 @@ struct RoomState : public State<RoomState, user_t> {
             left_player = invalid_user_id;
             update_players();
             std::cout << "Send OldPlayer Left\n";
-            broadcast_other(handle, pong::packet::OldPlayer{
-                pong::packet::OldPlayer::Side::Left,
+            broadcast_other(handle, pong::packet::server::OldPlayer{
+                pong::Side::Left,
                 get_user_data(handle)
             });
         }
@@ -291,8 +312,8 @@ struct RoomState : public State<RoomState, user_t> {
             right_player = invalid_user_id;
             update_players();
             std::cout << "Send OldPlayer Right\n";
-            broadcast_other(handle, pong::packet::OldPlayer{
-                pong::packet::OldPlayer::Side::Right,
+            broadcast_other(handle, pong::packet::server::OldPlayer{
+                pong::Side::Right,
                 get_user_data(handle)
             });
         } else {
@@ -300,7 +321,7 @@ struct RoomState : public State<RoomState, user_t> {
         }
 
         std::cout << "Send OldUser\n";
-        broadcast_other(handle, pong::packet::OldUser{
+        broadcast_other(handle, pong::packet::server::OldUser{
             get_user_data(handle)
         });
     }

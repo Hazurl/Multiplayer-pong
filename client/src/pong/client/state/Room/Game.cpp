@@ -2,7 +2,7 @@
 
 namespace pong::client::state::room {
 
-void Game::update(float dt, Role role, pong::Input input) {
+pong::CollisionEvent Game::update(float dt, Role role, pong::Input input) {
 
     if (role == Game::Role::Left) {
         left.update(dt, input);
@@ -18,7 +18,7 @@ void Game::update(float dt, Role role, pong::Input input) {
     }
 
 
-    ball.update(dt, left.y, right.y);
+    return ball.update(dt, left.y, right.y);
 
 }
 

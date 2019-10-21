@@ -1,19 +1,20 @@
 #pragma once
 
 #include <multipong/Game.hpp>
+#include <pong/client/Logger.hpp>
 
 namespace pong::client::state::room {
 
 struct Game {
     enum class Role {
-        Spec, Left, Right
+        Spec, Left, Right, Waiting
     };
 
     pong::Ball ball;
     pong::Pad left;
     pong::Pad right;
 
-    void update(float dt, Role role, pong::Input input);
+    pong::CollisionEvent update(float dt, Role role, pong::Input input);
 };
 
 }

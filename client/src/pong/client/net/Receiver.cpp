@@ -4,11 +4,11 @@
 
 namespace pong::client::net {
 
-std::pair<Status, std::optional<pong::packet::GamePacket>> receive(sf::TcpSocket& socket) {
+std::pair<Status, std::optional<pong::packet::server::Any>> receive(sf::TcpSocket& socket) {
     sf::Packet packet;
     switch(socket.receive(packet)) {
         case sf::Socket::Status::Done: {
-            pong::packet::GamePacket game_packet;
+            pong::packet::server::Any game_packet;
             packet >> game_packet;
             return std::make_pair(
                 Status::Available,

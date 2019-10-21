@@ -5,13 +5,13 @@
 
 namespace pong::client::net {
 
-bool PacketQueue::push(pong::packet::GamePacket new_packet) {
+bool PacketQueue::push(pong::packet::client::Any new_packet) {
     if (packets.size() >= maximum_queue_size) {
         WARN("Maximum capacity reached");
         return false;
     }
 
-    NOTICE("Push packet #", new_packet.index());
+    NOTICE("Push packet ", std::visit([] (auto const& p) { return p.name; }, new_packet));
     packets.emplace(std::move(new_packet));
     return true;
 }
@@ -20,7 +20,7 @@ bool PacketQueue::empty() const {
     return packets.empty();
 }
 
-std::pair<Status, std::optional<pong::packet::GamePacket>> PacketQueue::send(sf::TcpSocket& socket) {
+std::pair<Status, std::optional<pong::packet::client::Any>> PacketQueue::send(sf::TcpSocket& socket) {
     if (!partially_send) {
         if (empty()) {
             WARN("No packet in the queue");
@@ -46,7 +46,7 @@ std::pair<Status, std::optional<pong::packet::GamePacket>> PacketQueue::send(sf:
         }
 
         case sf::Socket::Status::Done: {
-            SUCCESS("Packet #", packets.front().index(), " sent");
+            SUCCESS("Packet ", std::visit([] (auto const& p) { return p.name; }, packets.front()), " sent");
             auto ret = std::make_pair(
                 Status::Available,
                 std::move(packets.front())
@@ -65,7 +65,7 @@ std::pair<Status, std::optional<pong::packet::GamePacket>> PacketQueue::send(sf:
         }
 
         default: {
-            ERROR("Error when sending packet #", packets.front().index());
+            ERROR("Error when sending packet ", std::visit([] (auto const& p) { return p.name; }, packets.front()));
             return std::make_pair(
                 Status::Error,
                 std::nullopt

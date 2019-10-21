@@ -74,13 +74,13 @@ action::Actions Login::on_window_event(Application, WindowEvent const& window_ev
     }, window_event);
 }
 
-action::Actions Login::on_send(Application, pong::packet::GamePacket const&) {
+action::Actions Login::on_send(Application, pong::packet::client::Any const&) {
     return action::idle();
 }
 
-action::Actions Login::on_receive(Application app, pong::packet::GamePacket const& game_packet) {
-    if (auto* response = std::get_if<pong::packet::UsernameResponse>(&game_packet)) {
-        if(response->result == pong::packet::UsernameResponse::Result::Okay) {
+action::Actions Login::on_receive(Application app, pong::packet::server::Any const& game_packet) {
+    if (auto* response = std::get_if<pong::packet::server::UsernameResponse>(&game_packet)) {
+        if(response->valid) {
             SUCCESS("Change state");
             return action::seq(action::change_state<MainLobby>(app, std::move(*username)));
         } else {
@@ -100,7 +100,7 @@ action::Actions Login::on_update(Application app, float dt) {
 action::Actions Login::on_connection(Application) {
     assert(username.has_value());
 
-    auto actions = action::seq(action::send(pong::packet::ChangeUsername{ *username }));
+    auto actions = action::seq(action::send(pong::packet::client::ChangeUsername{ *username }));
     return actions;
 }
 

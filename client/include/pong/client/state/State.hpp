@@ -21,8 +21,8 @@ struct State {
     virtual ~State() = default;
 
     virtual action::Actions on_window_event(Application application, WindowEvent const& window_event) = 0;
-    virtual action::Actions on_send(Application application, pong::packet::GamePacket const& game_packet) = 0;
-    virtual action::Actions on_receive(Application application, pong::packet::GamePacket const& game_packet) = 0;
+    virtual action::Actions on_send(Application application, pong::packet::client::Any const& game_packet) = 0;
+    virtual action::Actions on_receive(Application application, pong::packet::server::Any const& game_packet) = 0;
     virtual action::Actions on_update(Application application, float dt) = 0;
 
     virtual action::Actions on_connection(Application application) = 0;

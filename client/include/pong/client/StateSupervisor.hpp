@@ -61,8 +61,8 @@ private:
     Application make_application();
     
     std::vector<WindowEvent> poll_window_events();
-    std::vector<pong::packet::GamePacket> send_packets();
-    std::vector<pong::packet::GamePacket> receive_packets();
+    std::vector<pong::packet::client::Any> send_packets();
+    std::vector<pong::packet::server::Any> receive_packets();
 
     void process_events(float dt);
     void process_actions(action::Actions actions);

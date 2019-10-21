@@ -81,12 +81,12 @@ SRC_MAIN := main4.cpp
 ##### FLAGS
 #####
 
-OPTI := -g
-FLAGS := -std=c++2a  $(OPTI) -pthread
+OPTI := -g2
+FLAGS := -std=c++2a  $(OPTI) -pthread -rdynamic
 FLAGS += -Wall -Wextra -Wno-pmf-conversions -Wshadow -Wpedantic -Wduplicated-cond -Wduplicated-branches -Wlogical-op 
 FLAGS += -Wnull-dereference -Wuseless-cast -Wold-style-cast -Wcast-align -Wcast-qual -Wno-missing-field-initializers 
-TEST_FLAGS := -fsanitize=address -fsanitize=pointer-subtract -fsanitize=pointer-compare -fsanitize=leak -fsanitize=undefined -fuse-ld=gold
-TEST_FLAGS += -fsanitize-address-use-after-scope
+FLAGS += -fsanitize=address -fsanitize=pointer-subtract -fsanitize=pointer-compare -fsanitize=leak -fsanitize=undefined -fuse-ld=gold
+FLAGS += -fsanitize-address-use-after-scope
 STATIC_LINK_FLAG := rcs
 
 # Include path
@@ -102,7 +102,7 @@ INC_FLAG := -I $(INC_FOLDER) -I ../engine/include -I ./lib/SFML-Toolkit/include
 LIBS_PATH := -L ../engine/build/static  -L ./lib/SFML-Toolkit/build/static
 
 # For example: -lsfml-graphics
-LIBS := -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network -lmulti-pong-engine -lsftkfancyText -lsftkprinter
+LIBS := -ldl -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network -lmulti-pong-engine -lsftkfancyText -lsftkprinter 
 
 # Library that require to be build
 LIB_TO_BUILD := ../engine/build/static/libmulti-pong-engine.a ./lib/SFML-Toolkit/build/static/libsftkfancyText.a ./lib/SFML-Toolkit/build/static/libsftkprinter.a

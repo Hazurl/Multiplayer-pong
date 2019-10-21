@@ -82,7 +82,7 @@ CollisionEvent Ball::update(float dt, float pad_left, float pad_right, sf::Vecto
 }
 
 Pad::Pad() 
-:   y{ (meta::pad::bounds_y - meta::pad::width) / 2.f }
+:   y{ pong::meta::pad::bounds_y / 2.f }
 ,   speed{ 0.0f }
 {}
 

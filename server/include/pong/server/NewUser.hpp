@@ -7,25 +7,25 @@
 
 namespace pong::server {
 
-pong::packet::UsernameResponse::Result is_username_valid(std::string const& username) {
+bool is_username_valid(std::string const& username) {
     if (username.size() < 3) {
         std::cout << '"' << username << '"' << " is too short\n";
-        return pong::packet::UsernameResponse::TooShort;
+        return false;
     }
 
     if (username.size() > 20) {
         std::cout << '"' << username << '"' << " is too long\n";
-        return pong::packet::UsernameResponse::TooLong;
+        return false;
     }
 
     if (!std::all_of(std::begin(username), std::end(username), [] (auto c) {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
     })) {
         std::cout << '"' << username << '"' << " is not valid\n";
-        return pong::packet::UsernameResponse::InvalidCharacters;
+        return false;
     }
 
-    return pong::packet::UsernameResponse::Okay;
+    return true;
 
 }
 
@@ -36,7 +36,7 @@ struct NewUserState : public State<NewUserState> {
 
 
         // Receive
-        { pong::packet::PacketID::ChangeUsername, &NewUserState::on_username_changed }
+        { id_of(pong::packet::client::ChangeUsername{}), &NewUserState::on_username_changed }
 
 
     }), main_lobby{ _main_lobby } {}
@@ -48,16 +48,16 @@ struct NewUserState : public State<NewUserState> {
 
 
     Action on_username_changed(user_handle_t handle, packet_t packet) {
-        auto username = from_packet<pong::packet::ChangeUsername>(packet).username;
+        auto username = from_packet<pong::packet::client::ChangeUsername>(packet).username;
 
         auto response = is_username_valid(username);
 
         std::cout << "Send UsernameResponse\n";
-        send(handle, pong::packet::UsernameResponse{
+        send(handle, pong::packet::server::UsernameResponse{
             response
         });
 
-        if (response != pong::packet::UsernameResponse::Okay) {
+        if (!response) {
             std::cout << "Username " << username << " is not valid\n";
             return Idle{};
         }
