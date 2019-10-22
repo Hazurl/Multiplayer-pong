@@ -92,6 +92,36 @@ MAKE_PACKET(OldPlayer) {
     std::string username;
 };
 
+MAKE_PACKET(CreateRoomResponse) {
+    static constexpr char const* name = "CreateRoomResponse";
+    enum class Reason {
+        Okay,
+        Unknown
+    };
+
+    Reason reason;
+};
+
+MAKE_PACKET(GameOver) {
+    static constexpr char const* name = "GameOver";
+    enum class Result {
+        LeftWin,
+        RightWin,
+        LeftAbandon,
+        RightAbandon
+    };
+
+    Result result;
+};
+
+MAKE_PACKET(BeNextPlayer) {
+    static constexpr char const* name = "BeNextPlayer";
+};
+
+MAKE_PACKET(DeniedBePlayer) {
+    static constexpr char const* name = "BeNextPlayer";
+};
+
 using Any = std::variant<
     UsernameResponse,
     LobbyInfo,
@@ -106,7 +136,10 @@ using Any = std::variant<
     NewPlayer,
     OldPlayer,
     Score,
-    FetchRoomError
+    CreateRoomResponse,
+    GameOver,
+    BeNextPlayer,
+    DeniedBePlayer
 >;
 
 sf::Packet& operator >> (sf::Packet& p, Any& packet);

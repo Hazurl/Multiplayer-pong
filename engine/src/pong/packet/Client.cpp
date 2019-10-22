@@ -241,6 +241,65 @@ std::string to_string(Input const& packet) {
 
 
 /*
+    SubscribeRoomInfo
+
+    unsigned range_min
+    unsigned range_max_excluded
+*/
+
+sf::Packet& operator >> (sf::Packet& p, SubscribeRoomInfo& packet) {
+    return p >> details::by<sf::Uint32>(packet.range_min) >> details::by<sf::Uint32>(packet.range_max_excluded);
+}
+
+sf::Packet& operator << (sf::Packet& p, SubscribeRoomInfo const& packet) {
+    return p << id_of(packet) << details::by<sf::Uint32>(packet.range_min) << details::by<sf::Uint32>(packet.range_max_excluded);
+}
+
+bool operator == (SubscribeRoomInfo const& lhs, SubscribeRoomInfo const& rhs) {
+    return lhs.range_min == rhs.range_min && lhs.range_max_excluded == rhs.range_max_excluded;
+}
+
+std::ostream& operator <<(std::ostream& os, SubscribeRoomInfo const& packet) {
+    return os << to_string(packet);
+}
+
+std::string to_string(SubscribeRoomInfo const& packet) {
+    return std::string{ packet.name } + "{" + packet.range_min + ".." + packet.range_max_excluded ++ "}";
+}
+
+
+
+
+
+/*
+    AcceptBePlayer
+*/
+
+sf::Packet& operator >> (sf::Packet& p, AcceptBePlayer&) {
+    return p;
+}
+
+sf::Packet& operator << (sf::Packet& p, AcceptBePlayer const& packet) {
+    return p << id_of(packet);
+}
+
+bool operator == (AcceptBePlayer const& lhs, AcceptBePlayer const& rhs) {
+    return true;
+}
+
+std::ostream& operator <<(std::ostream& os, AcceptBePlayer const& packet) {
+    return os << to_string(packet);
+}
+
+std::string to_string(AcceptBePlayer const& packet) {
+    return std::string{ packet.name };
+}
+
+
+
+
+
+/*
     Any
 
     std::variant<
@@ -252,7 +311,8 @@ std::string to_string(Input const& packet) {
         Abandon,
         EnterQueue, 
         LeaveQueue,
-        FetchRoom
+        SubscribeRoomInfo,
+        AcceptBePlayer
     >;
 */
 
@@ -311,6 +371,20 @@ sf::Packet& operator >> (sf::Packet& p, Any& any_packet) {
 
         case id_of<LeaveQueue>(): {
             LeaveQueue packet;
+            p >> packet;
+            any_packet = std::move(packet);
+            return p;
+        } 
+
+        case id_of<SubscribeRoomInfo>(): {
+            SubscribeRoomInfo packet;
+            p >> packet;
+            any_packet = std::move(packet);
+            return p;
+        } 
+
+        case id_of<AcceptBePlayer>(): {
+            AcceptBePlayer packet;
             p >> packet;
             any_packet = std::move(packet);
             return p;

@@ -454,29 +454,126 @@ std::string to_string(OldPlayer const& packet) {
 
 
 /*
-    FetchRoomError
+    CreateRoomResponse
 
-    unsigned id
+    Reason reason
 */
 
-sf::Packet& operator >> (sf::Packet& p, FetchRoomError& packet) {
-    return p >> details::by<sf::Uint32>(packet.id);
+sf::Packet& operator >> (sf::Packet& p, CreateRoomResponse& packet) {
+    return p >> details::by<sf::Uint8>(packet.reason);
 }
 
-sf::Packet& operator << (sf::Packet& p, FetchRoomError const& packet) {
-    return p << id_of(packet) << details::by<sf::Uint32>(packet.id);
+sf::Packet& operator << (sf::Packet& p, CreateRoomResponse const& packet) {
+    return p << id_of(packet) << details::by<sf::Uint8>(packet.reason);
 }
 
-bool operator == (FetchRoomError const& lhs, FetchRoomError const& rhs) {
-    return lhs.id == rhs.id;
+bool operator == (CreateRoomResponse const& lhs, CreateRoomResponse const& rhs) {
+    return lhs.reason == rhs.reason;
 }
 
-std::ostream& operator <<(std::ostream& os, FetchRoomError const& packet) {
+std::ostream& operator <<(std::ostream& os, CreateRoomResponse const& packet) {
     return os << to_string(packet);
 }
 
-std::string to_string(FetchRoomError const& packet) {
-    return std::string{ packet.name } + "#" + std::to_string(packet.id);
+std::string to_string(CreateRoomResponse const& packet) {
+    char const* reason_str = packet.reason == CreateRoomResponse::Reason::Okay ?
+            "Okay"
+        :   "Unknown";
+    return std::string{ packet.name } + "::" + reason_str;
+}
+
+
+
+
+
+/*
+    GameOver
+
+    Result result
+*/
+
+sf::Packet& operator >> (sf::Packet& p, GameOver& packet) {
+    return p >> details::by<sf::Uint8>(packet.result);
+}
+
+sf::Packet& operator << (sf::Packet& p, GameOver const& packet) {
+    return p << id_of(packet) << details::by<sf::Uint8>(packet.result);
+}
+
+bool operator == (GameOver const& lhs, GameOver const& rhs) {
+    return lhs.result == rhs.result;
+}
+
+std::ostream& operator <<(std::ostream& os, GameOver const& packet) {
+    return os << to_string(packet);
+}
+
+std::string to_string(GameOver const& packet) {
+    char const* result_str = 
+        packet.result == GameOver::Result::LeftWin ?
+            "Okay"
+        :   packet.result == GameOver::Result::RightWin ?
+            "RightWin"
+        :   packet.result == GameOver::Result::LeftAbandon ?
+            "LeftAbandon"
+        :   "RightAbandon";
+    return std::string{ packet.name } + "::" + result_str;
+}
+
+
+
+
+
+/*
+    BeNextPlayer
+*/
+
+sf::Packet& operator >> (sf::Packet& p, BeNextPlayer& packet) {
+    return p;
+}
+
+sf::Packet& operator << (sf::Packet& p, BeNextPlayer const& packet) {
+    return p << id_of(packet);
+}
+
+bool operator == (BeNextPlayer const& lhs, BeNextPlayer const& rhs) {
+    return true;
+}
+
+std::ostream& operator <<(std::ostream& os, BeNextPlayer const& packet) {
+    return os << to_string(packet);
+}
+
+std::string to_string(BeNextPlayer const& packet) {
+    return std::string{ packet.name };
+}
+
+
+
+
+
+/*
+    DeniedBePlayer
+*/
+
+sf::Packet& operator >> (sf::Packet& p, BeNextPlayer& packet) {
+    return p;
+}
+
+sf::Packet& operator << (sf::Packet& p, BeNextPlayer const& packet) {
+    return p << id_of(packet);
+}
+
+bool operator == (BeNextPlayer const& lhs, BeNextPlayer const& rhs) {
+    return true;
+}
+
+std::ostream& operator <<(std::ostream& os, BeNextPlayer const& packet) {
+    return os << to_string(packet);
+}
+
+std::string to_string(BeNextPlayer const& packet) {
+    return std::string{ packet.name };
 }
 
 
@@ -531,7 +628,10 @@ std::string to_string(Score const& packet) {
         NewPlayer,
         OldPlayer,
         Score,
-        FetchRoomError
+        CreateRoomResponse,
+        GameOver,
+        BeNextPlayer,
+        DeniedBePlayer
     >;
 */
 
@@ -630,8 +730,29 @@ sf::Packet& operator >> (sf::Packet& p, Any& any_packet) {
             return p;
         }
 
-        case id_of<FetchRoomError>(): {
-            FetchRoomError packet;
+        case id_of<CreateRoomResponse>(): {
+            CreateRoomResponse packet;
+            p >> packet;
+            any_packet = std::move(packet);
+            return p;
+        }
+
+        case id_of<GameOver>(): {
+            GameOver packet;
+            p >> packet;
+            any_packet = std::move(packet);
+            return p;
+        }
+
+        case id_of<BeNextPlayer>(): {
+            BeNextPlayer packet;
+            p >> packet;
+            any_packet = std::move(packet);
+            return p;
+        }
+
+        case id_of<DeniedBePlayer>(): {
+            DeniedBePlayer packet;
             p >> packet;
             any_packet = std::move(packet);
             return p;

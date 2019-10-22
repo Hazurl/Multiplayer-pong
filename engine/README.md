@@ -91,8 +91,8 @@ When the client attempt to create an empty room.
 | Server | **`server::NewRoom`** | |
 | Server | **`server::OldRoom`** | |
 | Server | **`server::RoomInfo`** | |
-| Server | Valid **`server::RoomCreated`** | [**`Room::New`**](#New-1) |
-| Server | Invalid **`server::RoomCreated`** | [**`Lobby::RegularUser`**](#Regular-User) |
+| Server | Valid **`server::CreateRoomResponse`** | [**`Room::New`**](#New-1) |
+| Server | Invalid **`server::CreateRoomResponse`** | [**`Lobby::RegularUser`**](#Regular-User) |
 
 ## Room
 
@@ -123,6 +123,7 @@ When a client try to leave the room.
 | Server | Invalid **`server::LeaveRoomResponse`** | [**`Room::Spectator`**](#Spectator) |
 
 > **Ignored packets:**
+>
 > | Sender | Packet |
 > |--------|--------|
 > | Server | **`server::DeniedBePlayer`** | 
@@ -145,6 +146,7 @@ When a client is watching the current game being played (if there's one).
 | Client | **`client::LeaveRoom`** | [**`Room::Leaving`**](#Leaving) |
 
 > **Ignored packets:**
+>
 > | Sender | Packet |
 > |--------|--------|
 > | Server | **`server::DeniedBePlayer`** | 
@@ -172,6 +174,7 @@ When a client is waiting to play while still watching the game being played.
 | Client | **`client::LeaveQueue`** | [**`Room::Spectator`**](#Spectator) |
 
 > **Ignored packets:**
+>
 > | Sender | Packet |
 > |--------|--------|
 > | Server | **`server::DeniedBePlayer`** | 
@@ -197,6 +200,7 @@ When a client got accepted to be the next player and the server is waiting for t
 | Client | **`client::LeaveQueue`** | [**`Room::Spectator`**](#Spectator) |
 
 > **Ignored packets:**
+>
 > | Sender | Packet |
 > |--------|--------|
 > | Client | **`client::Input`** | 

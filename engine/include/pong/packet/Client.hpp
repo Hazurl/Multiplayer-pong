@@ -44,6 +44,16 @@ MAKE_PACKET(Input) {
     ::pong::Input input;
 };
 
+MAKE_PACKET(SubscribeRoomInfo) {
+    static constexpr char const* name = "SubscribeRoomInfo";
+    unsigned range_min;
+    unsigned range_max_excluded;
+};
+
+MAKE_PACKET(AcceptBePlayer) {
+    static constexpr char const* name = "AcceptBePlayer";
+};
+
 using Any = std::variant<
     ChangeUsername,
     CreateRoom,
@@ -52,7 +62,9 @@ using Any = std::variant<
     LeaveRoom,
     Abandon,
     EnterQueue, 
-    LeaveQueue
+    LeaveQueue,
+    SubscribeRoomInfo,
+    AcceptBePlayer
 >;
 
 sf::Packet& operator >> (sf::Packet& p, Any& packet);
