@@ -28,7 +28,7 @@ public:
     virtual StateAction on_send_old_room(pong::packet::OldRoom const& packet);
     virtual StateAction on_send_old_user(pong::packet::OldUser const& packet);
     virtual StateAction on_send_room_info(pong::packet::RoomInfo const& packet);
-    virtual StateAction on_send_username_response(pong::packet::UsernameResponse const& packet);
+    virtual StateAction on_send_username_response(pong::packet::ChangeUsernameResponse const& packet);
     virtual StateAction on_send_new_player(pong::packet::NewPlayer const& packet);
     virtual StateAction on_send_old_player(pong::packet::OldPlayer const& packet);
     virtual StateAction on_send_be_player(pong::packet::BePlayer const& packet);
@@ -49,7 +49,7 @@ public:
     virtual StateAction on_receive_old_room(pong::packet::OldRoom const& packet);
     virtual StateAction on_receive_old_user(pong::packet::OldUser const& packet);
     virtual StateAction on_receive_room_info(pong::packet::RoomInfo const& packet);
-    virtual StateAction on_receive_username_response(pong::packet::UsernameResponse const& packet);
+    virtual StateAction on_receive_username_response(pong::packet::ChangeUsernameResponse const& packet);
     virtual StateAction on_receive_new_player(pong::packet::NewPlayer const& packet);
     virtual StateAction on_receive_old_player(pong::packet::OldPlayer const& packet);
     virtual StateAction on_receive_be_player(pong::packet::BePlayer const& packet);

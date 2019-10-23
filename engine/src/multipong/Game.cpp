@@ -1,5 +1,7 @@
 #include <multipong/Game.hpp>
 
+#include <pong/packet/Utility.hpp>
+
 namespace pong {
 
 float normalize_input(Input input) {
@@ -106,15 +108,6 @@ void Pad::update(float dt, float board_height) {
     }
 }
 
-sf::Packet& operator >>(sf::Packet& packet, Input& input) {
-    int i;
-
-    packet >> i;
-    input = static_cast<Input>(i);
-
-    return packet;
-}
-
 sf::Packet& operator <<(sf::Packet& packet, Ball const& ball) {
            packet << ball.position.x << ball.position.y;
     return packet << ball.speed   .x << ball.speed   .y;
@@ -130,10 +123,6 @@ sf::Packet& operator <<(sf::Packet& packet, Pad const& pad) {
 
 bool operator==(Pad const& lhs, Pad const& rhs) {
     return lhs.y == rhs.y && lhs.speed == rhs.speed;
-}
-
-sf::Packet& operator <<(sf::Packet& packet, Input input) {
-    return packet << static_cast<int>(input);
 }
 
 sf::Packet& operator >>(sf::Packet& packet, Ball& ball) {

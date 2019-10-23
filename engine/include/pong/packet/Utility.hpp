@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <variant>
 #include <type_traits>
 
 #include <SFML/Network.hpp>

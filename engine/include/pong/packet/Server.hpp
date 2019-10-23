@@ -9,8 +9,8 @@
 
 namespace pong::packet::server {
 
-MAKE_PACKET(UsernameResponse) {
-    static constexpr char const* name = "UsernameResponse";
+MAKE_PACKET(ChangeUsernameResponse) {
+    static constexpr char const* name = "ChangeUsernameResponse";
     bool valid;
 };
 
@@ -42,7 +42,7 @@ MAKE_PACKET(OldRoom) {
 
 MAKE_PACKET(EnterRoomResponse) {
     static constexpr char const* name = "EnterRoomResponse";
-    enum Result {
+    enum Result : char {
         Okay = 0,
         Full = 1,
         InvalidID = 2,
@@ -94,7 +94,17 @@ MAKE_PACKET(OldPlayer) {
 
 MAKE_PACKET(CreateRoomResponse) {
     static constexpr char const* name = "CreateRoomResponse";
-    enum class Reason {
+    enum class Reason : char {
+        Okay,
+        Unknown
+    };
+
+    Reason reason;
+};
+
+MAKE_PACKET(LeaveRoomResponse) {
+    static constexpr char const* name = "LeaveRoomResponse";
+    enum class Reason : char {
         Okay,
         Unknown
     };
@@ -104,7 +114,7 @@ MAKE_PACKET(CreateRoomResponse) {
 
 MAKE_PACKET(GameOver) {
     static constexpr char const* name = "GameOver";
-    enum class Result {
+    enum class Result : char {
         LeftWin,
         RightWin,
         LeftAbandon,
@@ -119,11 +129,11 @@ MAKE_PACKET(BeNextPlayer) {
 };
 
 MAKE_PACKET(DeniedBePlayer) {
-    static constexpr char const* name = "BeNextPlayer";
+    static constexpr char const* name = "DeniedBePlayer";
 };
 
 using Any = std::variant<
-    UsernameResponse,
+    ChangeUsernameResponse,
     LobbyInfo,
     NewUser,
     OldUser,
@@ -139,7 +149,8 @@ using Any = std::variant<
     CreateRoomResponse,
     GameOver,
     BeNextPlayer,
-    DeniedBePlayer
+    DeniedBePlayer,
+    LeaveRoomResponse
 >;
 
 sf::Packet& operator >> (sf::Packet& p, Any& packet);

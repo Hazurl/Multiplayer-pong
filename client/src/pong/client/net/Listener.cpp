@@ -21,7 +21,7 @@ StateAction Listener::on_send(pong::packet::GamePacket const& game_packet) {
         [this] (pong::packet::OldRoom const& packet) { return on_send_old_room(packet); },
         [this] (pong::packet::OldUser const& packet) { return on_send_old_user(packet); },
         [this] (pong::packet::RoomInfo const& packet) { return on_send_room_info(packet); },
-        [this] (pong::packet::UsernameResponse const& packet) { return on_send_username_response(packet); },
+        [this] (pong::packet::ChangeUsernameResponse const& packet) { return on_send_username_response(packet); },
         [this] (pong::packet::NewPlayer const& packet) { return on_send_new_player(packet); },
         [this] (pong::packet::OldPlayer const& packet) { return on_send_old_player(packet); },
         [this] (pong::packet::BePlayer const& packet) { return on_send_be_player(packet); },
@@ -48,7 +48,7 @@ StateAction Listener::on_receive(pong::packet::GamePacket const& game_packet) {
         [this] (pong::packet::OldRoom const& packet) { return on_receive_old_room(packet); },
         [this] (pong::packet::OldUser const& packet) { return on_receive_old_user(packet); },
         [this] (pong::packet::RoomInfo const& packet) { return on_receive_room_info(packet); },
-        [this] (pong::packet::UsernameResponse const& packet) { return on_receive_username_response(packet); },
+        [this] (pong::packet::ChangeUsernameResponse const& packet) { return on_receive_username_response(packet); },
         [this] (pong::packet::NewPlayer const& packet) { return on_receive_new_player(packet); },
         [this] (pong::packet::OldPlayer const& packet) { return on_receive_old_player(packet); },
         [this] (pong::packet::BePlayer const& packet) { return on_receive_be_player(packet); },
@@ -122,7 +122,7 @@ StateAction Listener::on_send_room_info(pong::packet::RoomInfo const&) {
     return idle();
 }
 
-StateAction Listener::on_send_username_response(pong::packet::UsernameResponse const&) {
+StateAction Listener::on_send_username_response(pong::packet::ChangeUsernameResponse const&) {
     return idle();
 }
 
@@ -205,7 +205,7 @@ StateAction Listener::on_receive_room_info(pong::packet::RoomInfo const&) {
     return idle();
 }
 
-StateAction Listener::on_receive_username_response(pong::packet::UsernameResponse const&) {
+StateAction Listener::on_receive_username_response(pong::packet::ChangeUsernameResponse const&) {
     return idle();
 }
 

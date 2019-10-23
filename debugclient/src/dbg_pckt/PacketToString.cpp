@@ -20,15 +20,15 @@ std::string packet_to_string(pong::packet::ChangeUsername const& change_username
     return "ChangeUsername{ username: " + change_username.username + " }";
 }
 
-std::string packet_to_string(pong::packet::UsernameResponse const& username_response) {
+std::string packet_to_string(pong::packet::ChangeUsernameResponse const& username_response) {
     std::string response{ "??? "};
     switch(username_response.result) {
-        case pong::packet::UsernameResponse::Okay: response = "Okay"; break;
-        case pong::packet::UsernameResponse::InvalidCharacters: response = "InvalidCharacters"; break;
-        case pong::packet::UsernameResponse::TooShort: response = "TooShort"; break;
-        case pong::packet::UsernameResponse::TooLong: response = "TooLong"; break;
+        case pong::packet::ChangeUsernameResponse::Okay: response = "Okay"; break;
+        case pong::packet::ChangeUsernameResponse::InvalidCharacters: response = "InvalidCharacters"; break;
+        case pong::packet::ChangeUsernameResponse::TooShort: response = "TooShort"; break;
+        case pong::packet::ChangeUsernameResponse::TooLong: response = "TooLong"; break;
     }
-    return "UsernameResponse{ result: " + response + " }";
+    return "ChangeUsernameResponse{ result: " + response + " }";
 }
 
 std::string packet_to_string(pong::packet::LobbyInfo const& lobby_info) {

@@ -4,28 +4,28 @@
 namespace pong::packet::server {
 
 /*
-    UsernameResponse
+    ChangeUsernameResponse
 
     Result result
 */
 
-sf::Packet& operator >> (sf::Packet& p, UsernameResponse& packet) {
+sf::Packet& operator >> (sf::Packet& p, ChangeUsernameResponse& packet) {
     return p >> details::by<sf::Uint8>(packet.valid);
 }
 
-sf::Packet& operator << (sf::Packet& p, UsernameResponse const& packet) {
+sf::Packet& operator << (sf::Packet& p, ChangeUsernameResponse const& packet) {
     return p << id_of(packet) << details::by<sf::Uint8>(packet.valid);
 }
 
-bool operator == (UsernameResponse const& lhs, UsernameResponse const& rhs) {
+bool operator == (ChangeUsernameResponse const& lhs, ChangeUsernameResponse const& rhs) {
     return lhs.valid == rhs.valid;
 }
 
-std::ostream& operator <<(std::ostream& os, UsernameResponse const& packet) {
+std::ostream& operator <<(std::ostream& os, ChangeUsernameResponse const& packet) {
     return os << to_string(packet);
 }
 
-std::string to_string(UsernameResponse const& packet) {
+std::string to_string(ChangeUsernameResponse const& packet) {
     char const* result_str = packet.valid ? "Valid" : "Invalid";
     return std::string{ packet.name } + "::" + result_str;
 }
@@ -218,11 +218,11 @@ std::string to_string(OldRoom const& packet) {
 */
 
 sf::Packet& operator >> (sf::Packet& p, EnterRoomResponse& packet) {
-    return p >> details::by<sf::Uint32>(packet.result);
+    return p >> details::by<sf::Uint8>(packet.result);
 }
 
 sf::Packet& operator << (sf::Packet& p, EnterRoomResponse const& packet) {
-    return p << id_of(packet) << details::by<sf::Uint32>(packet.result);
+    return p << id_of(packet) << details::by<sf::Uint8>(packet.result);
 }
 
 bool operator == (EnterRoomResponse const& lhs, EnterRoomResponse const& rhs) {
@@ -354,12 +354,12 @@ std::string to_string(GameState const& packet) {
 
 sf::Packet& operator >> (sf::Packet& p, BePlayer& packet) {
     using details::operator>>;
-    return p >> details::by<sf::Uint32>(packet.side);
+    return p >> details::by<sf::Uint8>(packet.side);
 }
 
 sf::Packet& operator << (sf::Packet& p, BePlayer const& packet) {
     using details::operator<<;
-    return p << id_of(packet) << details::by<sf::Uint32>(packet.side);
+    return p << id_of(packet) << details::by<sf::Uint8>(packet.side);
 }
 
 bool operator == (BePlayer const& lhs, BePlayer const& rhs) {
@@ -390,12 +390,12 @@ std::string to_string(BePlayer const& packet) {
 
 sf::Packet& operator >> (sf::Packet& p, NewPlayer& packet) {
     using details::operator>>;
-    return p >> details::by<sf::Uint32>(packet.side) >> packet.username;
+    return p >> details::by<sf::Uint8>(packet.side) >> packet.username;
 }
 
 sf::Packet& operator << (sf::Packet& p, NewPlayer const& packet) {
     using details::operator<<;
-    return p << id_of(packet) << details::by<sf::Uint32>(packet.side) << packet.username;
+    return p << id_of(packet) << details::by<sf::Uint8>(packet.side) << packet.username;
 }
 
 bool operator == (NewPlayer const& lhs, NewPlayer const& rhs) {
@@ -426,12 +426,12 @@ std::string to_string(NewPlayer const& packet) {
 
 sf::Packet& operator >> (sf::Packet& p, OldPlayer& packet) {
     using details::operator>>;
-    return p >> details::by<sf::Uint32>(packet.side) >> packet.username;
+    return p >> details::by<sf::Uint8>(packet.side) >> packet.username;
 }
 
 sf::Packet& operator << (sf::Packet& p, OldPlayer const& packet) {
     using details::operator<<;
-    return p << id_of(packet) << details::by<sf::Uint32>(packet.side) << packet.username;
+    return p << id_of(packet) << details::by<sf::Uint8>(packet.side) << packet.username;
 }
 
 bool operator == (OldPlayer const& lhs, OldPlayer const& rhs) {
@@ -487,6 +487,39 @@ std::string to_string(CreateRoomResponse const& packet) {
 
 
 /*
+    LeaveRoomResponse
+
+    Reason reason
+*/
+
+sf::Packet& operator >> (sf::Packet& p, LeaveRoomResponse& packet) {
+    return p >> details::by<sf::Uint8>(packet.reason);
+}
+
+sf::Packet& operator << (sf::Packet& p, LeaveRoomResponse const& packet) {
+    return p << id_of(packet) << details::by<sf::Uint8>(packet.reason);
+}
+
+bool operator == (LeaveRoomResponse const& lhs, LeaveRoomResponse const& rhs) {
+    return lhs.reason == rhs.reason;
+}
+
+std::ostream& operator <<(std::ostream& os, LeaveRoomResponse const& packet) {
+    return os << to_string(packet);
+}
+
+std::string to_string(LeaveRoomResponse const& packet) {
+    char const* reason_str = packet.reason == LeaveRoomResponse::Reason::Okay ?
+            "Okay"
+        :   "Unknown";
+    return std::string{ packet.name } + "::" + reason_str;
+}
+
+
+
+
+
+/*
     GameOver
 
     Result result
@@ -528,7 +561,7 @@ std::string to_string(GameOver const& packet) {
     BeNextPlayer
 */
 
-sf::Packet& operator >> (sf::Packet& p, BeNextPlayer& packet) {
+sf::Packet& operator >> (sf::Packet& p, BeNextPlayer&) {
     return p;
 }
 
@@ -536,7 +569,7 @@ sf::Packet& operator << (sf::Packet& p, BeNextPlayer const& packet) {
     return p << id_of(packet);
 }
 
-bool operator == (BeNextPlayer const& lhs, BeNextPlayer const& rhs) {
+bool operator == (BeNextPlayer const&, BeNextPlayer const&) {
     return true;
 }
 
@@ -556,23 +589,23 @@ std::string to_string(BeNextPlayer const& packet) {
     DeniedBePlayer
 */
 
-sf::Packet& operator >> (sf::Packet& p, BeNextPlayer& packet) {
+sf::Packet& operator >> (sf::Packet& p, DeniedBePlayer&) {
     return p;
 }
 
-sf::Packet& operator << (sf::Packet& p, BeNextPlayer const& packet) {
+sf::Packet& operator << (sf::Packet& p, DeniedBePlayer const& packet) {
     return p << id_of(packet);
 }
 
-bool operator == (BeNextPlayer const& lhs, BeNextPlayer const& rhs) {
+bool operator == (DeniedBePlayer const&, DeniedBePlayer const&) {
     return true;
 }
 
-std::ostream& operator <<(std::ostream& os, BeNextPlayer const& packet) {
+std::ostream& operator <<(std::ostream& os, DeniedBePlayer const& packet) {
     return os << to_string(packet);
 }
 
-std::string to_string(BeNextPlayer const& packet) {
+std::string to_string(DeniedBePlayer const& packet) {
     return std::string{ packet.name };
 }
 
@@ -615,7 +648,7 @@ std::string to_string(Score const& packet) {
     Any
 
     std::variant<
-        UsernameResponse,
+        ChangeUsernameResponse,
         LobbyInfo,
         NewUser,
         OldUser,
@@ -631,7 +664,8 @@ std::string to_string(Score const& packet) {
         CreateRoomResponse,
         GameOver,
         BeNextPlayer,
-        DeniedBePlayer
+        DeniedBePlayer,
+        LeaveRoomResponse
     >;
 */
 
@@ -639,8 +673,8 @@ sf::Packet& operator >> (sf::Packet& p, Any& any_packet) {
     unsigned id;
     p >> id;
     switch(id) {
-        case id_of<UsernameResponse>(): {
-            UsernameResponse packet;
+        case id_of<ChangeUsernameResponse>(): {
+            ChangeUsernameResponse packet;
             p >> packet;
             any_packet = std::move(packet);
             return p;

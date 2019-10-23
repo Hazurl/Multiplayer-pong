@@ -13,9 +13,10 @@ namespace pong::client::state {
 
 Login::Login(Application app) 
 :   graphics(app)
+,   client_state{ Login::ClientState::Invalid }
 {}
 
-action::Actions Login::on_window_event(Application, WindowEvent const& window_event) {
+action::Actions Login::on_window_event(Application app, WindowEvent const& window_event) {
     return std::visit(Visitor{
         [this] (MouseButtonReleased const& event) {
             if (event.button == sf::Mouse::Button::Left) {
@@ -49,7 +50,7 @@ action::Actions Login::on_window_event(Application, WindowEvent const& window_ev
             return action::idle(); 
         },
 
-        [this] (KeyPressed const& event) {
+        [this, &app] (KeyPressed const& event) {
             if (event.code == sf::Keyboard::Left) {
                 graphics.cursor_left();
             }
@@ -61,7 +62,11 @@ action::Actions Login::on_window_event(Application, WindowEvent const& window_ev
             else if (event.code == sf::Keyboard::Enter) {
                 if (auto valid_username = graphics.validate_username()) {
                     username = std::move(valid_username);
-                    return action::seq(action::connect("127.0.0.1", 48624));
+                    if (app.is_connected() || app.is_connecting()) {
+                        return action::seq(action::send(pong::packet::client::ChangeUsername{ *username }));
+                    } else {
+                        return action::seq(action::connect("127.0.0.1", 48624));
+                    }
                 }
             }
 
@@ -74,22 +79,54 @@ action::Actions Login::on_window_event(Application, WindowEvent const& window_ev
     }, window_event);
 }
 
-action::Actions Login::on_send(Application, pong::packet::client::Any const&) {
-    return action::idle();
+action::Actions Login::on_send(Application app, pong::packet::client::Any const& game_packet) {
+    auto const real_client_state = client_state == Login::ClientState::Invalid ? packet::SubState::NewUser_Invalid : packet::SubState::NewUser_Connecting;
+
+    if (!packet::is_packet_expected_in(real_client_state, game_packet)) {
+        ERROR("Sending unexpected packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
+
+    if (packet::is_packet_ignored_in(real_client_state, game_packet)) {
+        WARN("Sending ignored packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
+
+    switch(client_state) {
+        case Login::ClientState::Invalid:
+            return invalid_on_send(app, game_packet);
+
+        case Login::ClientState::Connecting:
+            return connecting_on_send(app, game_packet);
+    }
+
+    assert(false && "Unknown ClientState");
+    throw std::runtime_error("Unknown ClientState");
 }
 
 action::Actions Login::on_receive(Application app, pong::packet::server::Any const& game_packet) {
-    if (auto* response = std::get_if<pong::packet::server::UsernameResponse>(&game_packet)) {
-        if(response->valid) {
-            SUCCESS("Change state");
-            return action::seq(action::change_state<MainLobby>(app, std::move(*username)));
-        } else {
-            ERROR("Invalid username");
-            return action::idle();
-        }
+    auto const real_client_state = client_state == Login::ClientState::Invalid ? packet::SubState::NewUser_Invalid : packet::SubState::NewUser_Connecting;
+
+    if (!packet::is_packet_expected_in(real_client_state, game_packet)) {
+        ERROR("Receiving unexpected packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
     }
 
-    return action::idle();
+    if (packet::is_packet_ignored_in(real_client_state, game_packet)) {
+        WARN("Receiving ignored packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
+
+    switch(client_state) {
+        case Login::ClientState::Invalid:
+            return invalid_on_receive(app, game_packet);
+
+        case Login::ClientState::Connecting:
+            return connecting_on_receive(app, game_packet);
+    }
+
+    assert(false && "Unknown ClientState");
+    throw std::runtime_error("Unknown ClientState");
 }
 
 action::Actions Login::on_update(Application app, float dt) {
@@ -129,7 +166,49 @@ void Login::free_properties(gui::Allocator<> gui) const {
 }
 
 void Login::draw(Application app, sf::RenderTarget& target, sf::RenderStates states) const {
-    graphics.draw(app.is_connecting() || app.is_connected(), target, states);
+    graphics.draw(app.is_connecting() || client_state == Login::ClientState::Connecting, target, states);
 }
+
+
+
+
+
+
+
+action::Actions Login::invalid_on_send(Application, pong::packet::client::Any const& game_packet) {
+    if (std::holds_alternative<packet::client::ChangeUsername>(game_packet)) {
+        client_state = Login::ClientState::Connecting;
+    }
+
+    return action::idle();
+}
+
+action::Actions Login::invalid_on_receive(Application, pong::packet::server::Any const&) {
+    return action::idle();
+}
+
+
+
+
+
+
+
+action::Actions Login::connecting_on_send(Application, pong::packet::client::Any const&) {
+    return action::idle();
+}
+
+action::Actions Login::connecting_on_receive(Application application, pong::packet::server::Any const& game_packet) {
+    if (auto* response = std::get_if<packet::server::ChangeUsernameResponse>(&game_packet)) {
+        if (response->valid) {
+            return action::seq(action::change_state<MainLobby>(application, std::move(*username)));
+        } else {
+            client_state = Login::ClientState::Invalid;
+            return action::idle();
+        }
+    }
+
+    return action::idle();
+}
+
 
 }

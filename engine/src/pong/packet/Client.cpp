@@ -210,11 +210,11 @@ std::string to_string(EnterRoom const& packet) {
 */
 
 sf::Packet& operator >> (sf::Packet& p, Input& packet) {
-    return p >> details::by<sf::Uint32>(packet.input);
+    return p >> details::by<sf::Uint8>(packet.input);
 }
 
 sf::Packet& operator << (sf::Packet& p, Input const& packet) {
-    return p << id_of(packet) << details::by<sf::Uint32>(packet.input);
+    return p << id_of(packet) << details::by<sf::Uint8>(packet.input);
 }
 
 bool operator == (Input const& lhs, Input const& rhs) {
@@ -264,7 +264,7 @@ std::ostream& operator <<(std::ostream& os, SubscribeRoomInfo const& packet) {
 }
 
 std::string to_string(SubscribeRoomInfo const& packet) {
-    return std::string{ packet.name } + "{" + packet.range_min + ".." + packet.range_max_excluded ++ "}";
+    return std::string{ packet.name } + "{" + std::to_string(packet.range_min) + ".." + std::to_string(packet.range_max_excluded) + "}";
 }
 
 
@@ -283,7 +283,7 @@ sf::Packet& operator << (sf::Packet& p, AcceptBePlayer const& packet) {
     return p << id_of(packet);
 }
 
-bool operator == (AcceptBePlayer const& lhs, AcceptBePlayer const& rhs) {
+bool operator == (AcceptBePlayer const&, AcceptBePlayer const&) {
     return true;
 }
 

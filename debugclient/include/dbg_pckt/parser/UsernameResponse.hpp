@@ -9,7 +9,7 @@ namespace wsp = wpr;
 
 namespace username_response_details {
 
-    wsp::Result<pong::packet::UsernameResponse::Result, predictions_t> validate_result(std::string res) {
+    wsp::Result<pong::packet::ChangeUsernameResponse::Result, predictions_t> validate_result(std::string res) {
         std::transform(std::begin(res), std::end(res), std::begin(res), ::tolower);
         predictions_t preds;
 
@@ -18,7 +18,7 @@ namespace username_response_details {
             std::string_view str = s; \
             if(str.starts_with(res)) { \
                 if (res.size() == str.size()) { \
-                    return wsp::success(0, pong::packet::UsernameResponse::Result::r); \
+                    return wsp::success(0, pong::packet::ChangeUsernameResponse::Result::r); \
                 } else { \
                     str.remove_prefix(res.size()); \
                     preds.emplace_back(str); \
@@ -52,8 +52,8 @@ namespace username_response_details {
         return {};
     }
 
-    auto make_username_response(pong::packet::UsernameResponse::Result r) {
-        return pong::packet::UsernameResponse{ r };
+    auto make_username_response(pong::packet::ChangeUsernameResponse::Result r) {
+        return pong::packet::ChangeUsernameResponse{ r };
     }
 }
 

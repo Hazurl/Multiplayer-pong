@@ -13,6 +13,7 @@ namespace pong::client::state {
 MainLobby::MainLobby(Application app, std::string _username) 
 :   graphics(app)
 ,   username{ std::move(_username) }
+,   client_state{ MainLobby::ClientState::New }
 {}
 
 action::Actions MainLobby::on_window_event(Application, WindowEvent const& window_event) {
@@ -62,35 +63,83 @@ action::Actions MainLobby::on_window_event(Application, WindowEvent const& windo
 }
 
 action::Actions MainLobby::on_send(Application app, pong::packet::client::Any const& game_packet) {
-    return std::visit(Visitor{
-        [&] (pong::packet::client::CreateRoom const& /* create_room */) {
-            NOTICE("Change state to spectator");
-            return action::seq(action::change_state<Room>(app, std::move(username)));
-        },
+    auto const real_client_state = [] (auto state) {
+        switch(state) {
+            case MainLobby::ClientState::New: return packet::SubState::Lobby_New;
+            case MainLobby::ClientState::Regular: return packet::SubState::Lobby_RegularUser;
+            case MainLobby::ClientState::EnteringRom: return packet::SubState::Lobby_EnteringRoom;
+            case MainLobby::ClientState::CreatingRoom: return packet::SubState::Lobby_CreatingRoom;
+        }
+        assert(false && "Unknown ClientState");
+        throw std::runtime_error("Unknown ClientState");
+    }(client_state);
 
-        [] (auto const&) { return action::idle(); }
-    }, game_packet);
+    if (!packet::is_packet_expected_in(real_client_state, game_packet)) {
+        ERROR("Sending unexpected packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
+
+    if (packet::is_packet_ignored_in(real_client_state, game_packet)) {
+        WARN("Sending ignored packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
+
+    switch(client_state) {
+        case MainLobby::ClientState::New:
+            return new_on_send(app, game_packet);
+
+        case MainLobby::ClientState::Regular:
+            return regular_on_send(app, game_packet);
+
+        case MainLobby::ClientState::EnteringRom:
+            return entering_room_on_send(app, game_packet);
+
+        case MainLobby::ClientState::CreatingRoom:
+            return creating_room_on_send(app, game_packet);
+    }
+
+    assert(false && "Unknown ClientState");
+    throw std::runtime_error("Unknown ClientState");
 }
 
 action::Actions MainLobby::on_receive(Application app, pong::packet::server::Any const& game_packet) {
-    return std::visit(Visitor{
-        [this] (pong::packet::server::LobbyInfo const& /* lobby_info */) {
-            NOTICE("Received Lobby info");
-            return action::idle();
-        },
+    auto const real_client_state = [] (auto state) {
+        switch(state) {
+            case MainLobby::ClientState::New: return packet::SubState::Lobby_New;
+            case MainLobby::ClientState::Regular: return packet::SubState::Lobby_RegularUser;
+            case MainLobby::ClientState::EnteringRom: return packet::SubState::Lobby_EnteringRoom;
+            case MainLobby::ClientState::CreatingRoom: return packet::SubState::Lobby_CreatingRoom;
+        }
+        assert(false && "Unknown ClientState");
+        throw std::runtime_error("Unknown ClientState");
+    }(client_state);
 
-        [&] (pong::packet::server::EnterRoomResponse const& response) {
-            if (response.result == pong::packet::server::EnterRoomResponse::Okay) {
-                NOTICE("Change state to spectator");
-                return action::seq(action::change_state<Room>(app, std::move(username)));
-            } else {
-                WARN("EnterRoomResponse #", static_cast<int>(response.result));
-                return action::idle();
-            }
-        },
+    if (!packet::is_packet_expected_in(real_client_state, game_packet)) {
+        ERROR("Receiving unexpected packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
 
-        [] (auto const&) { return action::idle(); }
-    }, game_packet);
+    if (packet::is_packet_ignored_in(real_client_state, game_packet)) {
+        WARN("Receiving ignored packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
+
+    switch(client_state) {
+        case MainLobby::ClientState::New:
+            return new_on_receive(app, game_packet);
+
+        case MainLobby::ClientState::Regular:
+            return regular_on_receive(app, game_packet);
+
+        case MainLobby::ClientState::EnteringRom:
+            return entering_room_on_receive(app, game_packet);
+
+        case MainLobby::ClientState::CreatingRoom:
+            return creating_room_on_receive(app, game_packet);
+    }
+
+    assert(false && "Unknown ClientState");
+    throw std::runtime_error("Unknown ClientState");
 }
 
 action::Actions MainLobby::on_update(Application app, float dt) {
@@ -124,6 +173,167 @@ void MainLobby::free_properties(gui::Allocator<> gui) const {
 
 void MainLobby::draw(Application app, sf::RenderTarget& target, sf::RenderStates states) const {
     graphics.draw(target, states);
+}
+
+
+
+
+
+
+action::Actions MainLobby::new_on_send(Application application, pong::packet::client::Any const& game_packet) {
+    return action::idle();
+}
+
+action::Actions MainLobby::new_on_receive(Application application, pong::packet::server::Any const& game_packet) {
+
+    if (auto* lobby_info = std::get_if<packet::server::LobbyInfo>(&game_packet)) {
+        client_state = MainLobby::ClientState::Regular;
+    }
+
+    return action::idle();
+}
+
+
+
+
+
+
+action::Actions MainLobby::regular_on_send(Application app, pong::packet::client::Any const& game_packet) {
+    if (std::holds_alternative<packet::client::EnterRoom>(game_packet)) {
+        client_state = MainLobby::ClientState::EnteringRom;
+    }
+
+    else if (std::holds_alternative<packet::client::CreateRoom>(game_packet)) {
+        client_state = MainLobby::ClientState::CreatingRoom;
+    }
+
+    else if (auto* subscription = std::get_if<packet::client::SubscribeRoomInfo>(&game_packet)) {
+        SUCCESS("Subscribed to [", subscription->range_min, ", ", subscription->range_max_excluded, ")");
+    }
+
+    return action::idle();
+}
+
+action::Actions MainLobby::regular_on_receive(Application app, pong::packet::server::Any const& game_packet) {
+    return std::visit(Visitor {
+        [this, &app] (packet::server::NewUser const& new_user) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::OldUser const& old_user) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::NewRoom const& new_room) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::OldRoom const& old_room) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::RoomInfo const& room_info) {
+            return action::idle();
+        },
+
+        [this, &app] (auto const&) {
+            return action::idle();
+        }
+    }, game_packet);
+}
+
+
+
+
+
+
+action::Actions MainLobby::entering_room_on_send(Application app, pong::packet::client::Any const& game_packet) {
+    return action::idle();
+}
+
+action::Actions MainLobby::entering_room_on_receive(Application app, pong::packet::server::Any const& game_packet) {
+    return std::visit(Visitor {
+        [this, &app] (packet::server::NewUser const& new_user) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::OldUser const& old_user) {
+            return action::idle();
+        },
+        
+        [this, &app] (packet::server::NewRoom const& new_room) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::OldRoom const& old_room) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::RoomInfo const& room_info) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::EnterRoomResponse const& response) {
+            if (response.result == packet::server::EnterRoomResponse::Result::Okay) {
+                return action::seq(action::change_state<Room>(app, std::move(username)));
+            } else {
+                client_state = MainLobby::ClientState::Regular;
+            }
+
+            return action::idle();
+        },
+
+        [this, &app] (auto const&) {
+            return action::idle();
+        }
+    }, game_packet);
+}
+
+
+
+
+
+
+action::Actions MainLobby::creating_room_on_send(Application app, pong::packet::client::Any const& game_packet) {
+    return action::idle();
+}
+
+action::Actions MainLobby::creating_room_on_receive(Application app, pong::packet::server::Any const& game_packet) {
+    return std::visit(Visitor {
+        [this, &app] (packet::server::NewUser const& new_user) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::OldUser const& old_user) {
+            return action::idle();
+        },
+        
+        [this, &app] (packet::server::NewRoom const& new_room) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::OldRoom const& old_room) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::RoomInfo const& room_info) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::CreateRoomResponse const& response) {
+            if (response.reason == packet::server::CreateRoomResponse::Reason::Okay) {
+                return action::seq(action::change_state<Room>(app, std::move(username)));
+            } else {
+                client_state = MainLobby::ClientState::Regular;
+            }
+
+            return action::idle();
+        },
+
+        [this, &app] (auto const&) {
+            return action::idle();
+        }
+    }, game_packet);
 }
 
 }

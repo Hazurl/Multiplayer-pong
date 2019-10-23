@@ -10,7 +10,7 @@ namespace pong::client {
 
 LoginIn::LoginIn(socket_ptr_t _socket, gui::Gui<>& _gui, gui::RectProperties _window_properties, sf::Font const& _font) 
 :   base_t(std::move(_socket), {
-        { pong::packet::PacketID::UsernameResponse, &LoginIn::on_username_response }
+        { pong::packet::PacketID::ChangeUsernameResponse, &LoginIn::on_username_response }
     })
 ,   font{ _font }
 ,   gui{ _gui }
@@ -314,9 +314,9 @@ void LoginIn::on_connection() {
 
 
 Action LoginIn::on_username_response(packet_t packet) {
-    auto res = from_packet<pong::packet::UsernameResponse>(packet).result;
-    std::cout << "UsernameResponse: " << static_cast<int>(res) << '\n';
-    if (res == pong::packet::UsernameResponse::Okay) {
+    auto res = from_packet<pong::packet::ChangeUsernameResponse>(packet).result;
+    std::cout << "ChangeUsernameResponse: " << static_cast<int>(res) << '\n';
+    if (res == pong::packet::ChangeUsernameResponse::Okay) {
         return change_state<InMainLobby>(gui, window_properties, font, pseudo_txt.getString().toAnsiString());
     }
 

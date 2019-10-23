@@ -21,7 +21,7 @@ std::string packet_to_string(pong::packet::NewUser const& packet);
 std::string packet_to_string(pong::packet::OldRoom const& packet);
 std::string packet_to_string(pong::packet::OldUser const& packet);
 std::string packet_to_string(pong::packet::RoomInfo const& packet);
-std::string packet_to_string(pong::packet::UsernameResponse const& packet);
+std::string packet_to_string(pong::packet::ChangeUsernameResponse const& packet);
 std::string packet_to_string(pong::packet::NewPlayer const& packet);
 std::string packet_to_string(pong::packet::OldPlayer const& packet);
 std::string packet_to_string(pong::packet::BePlayer const& packet);

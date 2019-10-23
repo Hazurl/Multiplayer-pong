@@ -61,15 +61,15 @@ bool operator==(ChangeUsername const& lhs, ChangeUsername const& rhs) {
 
 
 
-sf::Packet& operator >> (sf::Packet& p, UsernameResponse& response) {
+sf::Packet& operator >> (sf::Packet& p, ChangeUsernameResponse& response) {
     return p >> to_enum(response.result);
 }
 
-sf::Packet& operator << (sf::Packet& p, UsernameResponse const& response) {
-    return p << PacketID::UsernameResponse << from_enum(response.result);
+sf::Packet& operator << (sf::Packet& p, ChangeUsernameResponse const& response) {
+    return p << PacketID::ChangeUsernameResponse << from_enum(response.result);
 }
 
-bool operator==(UsernameResponse const& lhs, UsernameResponse const& rhs) {
+bool operator==(ChangeUsernameResponse const& lhs, ChangeUsernameResponse const& rhs) {
     return lhs.result == rhs.result;
 }
 
@@ -235,11 +235,14 @@ bool operator==(GameState const& lhs, GameState const& rhs) {
 
 
 sf::Packet& operator >> (sf::Packet& p, Input& input) {
-    return p >> to_enum(input.input);
+    sf::Uint8 i;
+    p >> i;
+    input.input = static_cast<pong::Input>(i);
+    return p;
 }
 
 sf::Packet& operator << (sf::Packet& p, Input const& input) {
-    return p << PacketID::Input << from_enum(input.input);
+    return p << PacketID::Input << static_cast<sf::Uint8>(input.input);
 }  
 
 bool operator==(Input const& lhs, Input const& rhs) {
@@ -363,7 +366,7 @@ sf::Packet& operator >> (sf::Packet& p, GamePacket& game_packet) {
         process(OldRoom)
         process(OldUser)
         process(RoomInfo)
-        process(UsernameResponse)
+        process(ChangeUsernameResponse)
         process(NewPlayer)
         process(OldPlayer)
         process(BePlayer)

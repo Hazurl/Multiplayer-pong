@@ -94,25 +94,25 @@ sf::Socket::Status receive_input(sf::TcpSocket& player, pong::Input& res, bool& 
     return status;
 }
 
-pong::packet::UsernameResponse::Result is_username_valid(std::string const& username) {
+pong::packet::ChangeUsernameResponse::Result is_username_valid(std::string const& username) {
     if (username.size() < 3) {
         std::cout << '"' << username << '"' << " is too short\n";
-        return pong::packet::UsernameResponse::TooShort;
+        return pong::packet::ChangeUsernameResponse::TooShort;
     }
 
     if (username.size() > 20) {
         std::cout << '"' << username << '"' << " is too long\n";
-        return pong::packet::UsernameResponse::TooLong;
+        return pong::packet::ChangeUsernameResponse::TooLong;
     }
 
     if (!std::all_of(std::begin(username), std::end(username), [] (auto c) {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
     })) {
         std::cout << '"' << username << '"' << " is not valid\n";
-        return pong::packet::UsernameResponse::InvalidCharacters;
+        return pong::packet::ChangeUsernameResponse::InvalidCharacters;
     }
 
-    return pong::packet::UsernameResponse::Okay;
+    return pong::packet::ChangeUsernameResponse::Okay;
 
 }
 
@@ -247,7 +247,7 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
                         auto request = from_packet<pong::packet::ChangeUsername>(packet);
                         auto valid = is_username_valid(request.username);
 
-                        if (valid == pong::packet::UsernameResponse::Okay) {
+                        if (valid == pong::packet::ChangeUsernameResponse::Okay) {
                             auto new_user_message = to_packet(pong::packet::NewUser {
                                 request.username
                             });
@@ -267,12 +267,12 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
                             }
                         }
 
-                        auto response = to_packet(pong::packet::UsernameResponse{
+                        auto response = to_packet(pong::packet::ChangeUsernameResponse{
                             valid, users, rooms_id
                         });
 
                         partial_packets.push_back({ response, &socket });
-                        return valid != pong::packet::UsernameResponse::Okay;
+                        return valid != pong::packet::ChangeUsernameResponse::Okay;
                     }
 
                     default: {

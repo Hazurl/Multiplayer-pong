@@ -27,15 +27,15 @@ namespace meta {
 
 }
 
-enum class Input {
+enum class Input : char {
     Idle = 0, Up = 1, Down = 2
 };
 
-enum class Side {
+enum class Side : char {
     Left, Right
 };
 
-enum class CollisionEvent {
+enum class CollisionEvent : char {
     LeftBoundary,
     RightBoundary,
     None
@@ -89,14 +89,12 @@ bool operator==(Ball const& lhs, Ball const& rhs);
 
 // Server side
 
-sf::Packet& operator >>(sf::Packet& packet, Input& input);
 sf::Packet& operator <<(sf::Packet& packet, Ball const& ball);
 sf::Packet& operator <<(sf::Packet& packet, Pad const& pad);
 
 
 // Client side
 
-sf::Packet& operator <<(sf::Packet& packet, Input input);
 sf::Packet& operator >>(sf::Packet& packet, Ball& ball);
 sf::Packet& operator >>(sf::Packet& packet, Pad& pad);
 

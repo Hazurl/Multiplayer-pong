@@ -28,9 +28,21 @@ public:
 
 private:
 
+    action::Actions invalid_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions invalid_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    action::Actions connecting_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions connecting_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    enum class ClientState {
+        Invalid, Connecting
+    };
+
     login::Graphics graphics;
 
     std::optional<std::string> username;
+
+    ClientState client_state;
 
 };
 

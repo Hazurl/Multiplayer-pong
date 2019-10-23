@@ -24,7 +24,7 @@ using ParserResult = wpr::Result<wpr::Sum<
     pong::packet::OldRoom,
     pong::packet::OldUser,
     pong::packet::RoomInfo,
-    pong::packet::UsernameResponse,
+    pong::packet::ChangeUsernameResponse,
     pong::packet::NewPlayer,
     pong::packet::OldPlayer,
     pong::packet::BePlayer,

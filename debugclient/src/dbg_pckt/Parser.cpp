@@ -400,16 +400,16 @@ bool test_parsers() {
 */
 
     tester += it("Username response", username_response) 
-        > should_be(pong::packet::UsernameResponse{ pong::packet::UsernameResponse::Okay })
+        > should_be(pong::packet::ChangeUsernameResponse{ pong::packet::ChangeUsernameResponse::Okay })
             >> on(" okay")
 
-        > should_be(pong::packet::UsernameResponse{ pong::packet::UsernameResponse::InvalidCharacters })
+        > should_be(pong::packet::ChangeUsernameResponse{ pong::packet::ChangeUsernameResponse::InvalidCharacters })
             >> on(" invalidCharacters")
 
-        > should_be(pong::packet::UsernameResponse{ pong::packet::UsernameResponse::TooShort })
+        > should_be(pong::packet::ChangeUsernameResponse{ pong::packet::ChangeUsernameResponse::TooShort })
             >> on("\tTooShort")
 
-        > should_be(pong::packet::UsernameResponse{ pong::packet::UsernameResponse::TooLong })
+        > should_be(pong::packet::ChangeUsernameResponse{ pong::packet::ChangeUsernameResponse::TooLong })
             >> on("\tTooLong")
 
         > should_fail(predictions_t{})
@@ -678,8 +678,8 @@ bool test_parsers() {
         > should_be(pong::packet::RoomInfo{ "abc_123", "something", { "blabla" }})
             >> on ("RoomInfo 'abc_123' \"something\"['blabla'] ")
 
-        > should_be(pong::packet::UsernameResponse{ pong::packet::UsernameResponse::Okay })
-            >> on ("UsernameResponse OKAY ")
+        > should_be(pong::packet::ChangeUsernameResponse{ pong::packet::ChangeUsernameResponse::Okay })
+            >> on ("ChangeUsernameResponse OKAY ")
 
         > should_fail(predictions_t{ "eaveroom", "obbyinfo" })
             >> on ("l")

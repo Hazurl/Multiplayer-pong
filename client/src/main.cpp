@@ -252,10 +252,10 @@ int main(int argc, char** argv) {
                         case sf::Socket::Done: {
                             pong::packet::PacketID packet_id; 
                             packet >> packet_id;
-                            if (packet_id == pong::packet::PacketID::UsernameResponse) {
-                                pong::packet::UsernameResponse response;
+                            if (packet_id == pong::packet::PacketID::ChangeUsernameResponse) {
+                                pong::packet::ChangeUsernameResponse response;
                                 packet >> response;
-                                if (response.result != pong::packet::UsernameResponse::Okay) {
+                                if (response.result != pong::packet::ChangeUsernameResponse::Okay) {
                                     window.close();
                                     std::cerr << "Invalid Username...\n";
                                     error_code = 1;
@@ -274,7 +274,7 @@ int main(int argc, char** argv) {
                                 state = pong::State::ValidUser;
                                 std::cout << "All good !\n";
                             } else {
-                                std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected UsernameResponse #" << static_cast<int>(pong::packet::PacketID::UsernameResponse) << '\n';
+                                std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected ChangeUsernameResponse #" << static_cast<int>(pong::packet::PacketID::ChangeUsernameResponse) << '\n';
                             }
                             break;
                         }
@@ -391,7 +391,7 @@ int main(int argc, char** argv) {
                             auto& tmp_text = rooms_online.emplace_back("#" + std::to_string(new_room.id), font, 15);
                             tmp_text.setPosition(boundaries.x - 20 - tmp_text.getLocalBounds().width, 20 + (rooms_online.size() - 1) * (tmp_text.getCharacterSize() + 5));
                         } else {
-                            std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected UsernameResponse #" << static_cast<int>(pong::packet::PacketID::NewUser);
+                            std::cerr << "Warning: Receive packet #" << static_cast<int>(packet_id) << ", expected ChangeUsernameResponse #" << static_cast<int>(pong::packet::PacketID::NewUser);
                             std::cerr << " or OldUser #" << static_cast<int>(pong::packet::PacketID::OldUser) << " or NewRoom #" << static_cast<int>(pong::packet::PacketID::NewRoom) << '\n';
                         }
                         break;

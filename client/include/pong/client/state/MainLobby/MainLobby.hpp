@@ -28,9 +28,27 @@ public:
 
 private:
 
+    action::Actions new_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions new_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    action::Actions regular_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions regular_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    action::Actions entering_room_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions entering_room_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    action::Actions creating_room_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions creating_room_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    enum class ClientState {
+        New, Regular, EnteringRom, CreatingRoom
+    };
+
     mainlobby::Graphics graphics;
 
     std::string username;
+
+    ClientState client_state;
 
 };
 

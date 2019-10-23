@@ -9,7 +9,9 @@
 #include <pong/client/Logger.hpp>
 #include <pong/client/WindowEvent.hpp>
 
-#include <multipong/Packets.hpp>
+#include <pong/packet/Client.hpp>
+#include <pong/packet/Server.hpp>
+#include <pong/packet/State.hpp>
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>

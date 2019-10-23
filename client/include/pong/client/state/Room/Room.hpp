@@ -36,8 +36,35 @@ private:
     action::Actions on_input(bool up, bool down);
     action::Actions on_button(room::Graphics::Button button);
 
+    action::Actions new_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions new_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    action::Actions spectator_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions spectator_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    action::Actions leaving_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions leaving_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    action::Actions player_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions player_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    action::Actions queued_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions queued_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    action::Actions next_player_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions next_player_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    action::Actions accepting_be_player_on_send(Application application, pong::packet::client::Any const& game_packet);
+    action::Actions accepting_be_player_on_receive(Application application, pong::packet::server::Any const& game_packet);
+
+    enum class ClientState {
+        New, Spectator, Leaving, Player, Queued, NextPlayer, AcceptingBePlayer
+    };
+
     room::Graphics graphics;
     room::Game game;
+
+    ClientState client_state;
 
     std::string username;
     room::Game::Role role;

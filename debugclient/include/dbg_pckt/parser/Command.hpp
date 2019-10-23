@@ -13,7 +13,7 @@
 #include <dbg_pckt/parser/OldRoom.hpp>
 #include <dbg_pckt/parser/OldUser.hpp>
 #include <dbg_pckt/parser/RoomInfo.hpp>
-#include <dbg_pckt/parser/UsernameResponse.hpp>
+#include <dbg_pckt/parser/ChangeUsernameResponse.hpp>
 #include <dbg_pckt/parser/NewPlayer.hpp>
 #include <dbg_pckt/parser/OldPlayer.hpp>
 #include <dbg_pckt/parser/Abandon.hpp>

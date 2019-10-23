@@ -24,7 +24,7 @@ enum class State {
 
     /*
         [CLIENT] Send ChangeUsername
-        [SERVER] Send UsernameResponse, LobbyInfo
+        [SERVER] Send ChangeUsernameResponse, LobbyInfo
     */
     InvalidUser,
 
@@ -76,7 +76,7 @@ sf::Packet& operator >> (sf::Packet& p, std::vector<T>& v) {
 
 enum class PacketID {
     ChangeUsername = 0,
-    UsernameResponse = 1,
+    ChangeUsernameResponse = 1,
     EnterRoom = 2,
     EnterRoomResponse = 3,
     LeaveRoom = 4,
@@ -110,8 +110,8 @@ sf::Packet& operator >> (sf::Packet& p, ChangeUsername& username);
 sf::Packet& operator << (sf::Packet& p, ChangeUsername const& username);
 bool operator == (ChangeUsername const& lhs, ChangeUsername const& rhs);
 
-struct UsernameResponse {
-    static constexpr PacketID packet_id = PacketID::UsernameResponse;
+struct ChangeUsernameResponse {
+    static constexpr PacketID packet_id = PacketID::ChangeUsernameResponse;
 
     enum Result {
         Okay = 0,
@@ -123,9 +123,9 @@ struct UsernameResponse {
     Result result;
 };
 
-sf::Packet& operator >> (sf::Packet& p, UsernameResponse& username);
-sf::Packet& operator << (sf::Packet& p, UsernameResponse const& username);
-bool operator == (UsernameResponse const& lhs, UsernameResponse const& rhs);
+sf::Packet& operator >> (sf::Packet& p, ChangeUsernameResponse& username);
+sf::Packet& operator << (sf::Packet& p, ChangeUsernameResponse const& username);
+bool operator == (ChangeUsernameResponse const& lhs, ChangeUsernameResponse const& rhs);
 
 struct LobbyInfo {
     static constexpr PacketID packet_id = PacketID::LobbyInfo;
@@ -336,7 +336,7 @@ using GamePacket = std::variant<
     OldRoom,
     OldUser,
     RoomInfo,
-    UsernameResponse,
+    ChangeUsernameResponse,
     NewPlayer,
     OldPlayer,
     BePlayer,

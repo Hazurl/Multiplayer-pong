@@ -101,8 +101,18 @@ constexpr bool is_packet_ignored_in(SubState state, T const& = T{}) {
     }
 }
 
+constexpr bool is_packet_ignored_in(SubState state, client::Any const& any_packet) {
+    return std::visit([state] (auto const& packet) { return is_packet_ignored_in(state, packet); }, any_packet);
+}
+
+constexpr bool is_packet_ignored_in(SubState state, server::Any const& any_packet) {
+    return std::visit([state] (auto const& packet) { return is_packet_ignored_in(state, packet); }, any_packet);
+}
+
 template<typename T>
 constexpr bool is_packet_expected_in(SubState state, T const& = T{}) {
+    switch(state) {
+
         case SubState::NewUser_Invalid:
             return
                 is_packet_ignored_in<T>(state)
@@ -138,8 +148,7 @@ constexpr bool is_packet_expected_in(SubState state, T const& = T{}) {
             ||  std::is_same_v<T, server::NewRoom>
             ||  std::is_same_v<T, server::OldRoom>
             ||  std::is_same_v<T, server::RoomInfo>
-            ||  std::is_same_v<T, client::SubscribeRoomInfo>
-            ||  std::is_same_v<T, client::EnterRoomResponse>;
+            ||  std::is_same_v<T, server::EnterRoomResponse>;
 
         case SubState::Lobby_CreatingRoom:
             return
@@ -149,8 +158,7 @@ constexpr bool is_packet_expected_in(SubState state, T const& = T{}) {
             ||  std::is_same_v<T, server::NewRoom>
             ||  std::is_same_v<T, server::OldRoom>
             ||  std::is_same_v<T, server::RoomInfo>
-            ||  std::is_same_v<T, client::SubscribeRoomInfo>
-            ||  std::is_same_v<T, client::CreateRoomResponse>;
+            ||  std::is_same_v<T, server::CreateRoomResponse>;
 
         case SubState::Room_New:
             return
@@ -222,7 +230,7 @@ constexpr bool is_packet_expected_in(SubState state, T const& = T{}) {
             ||  std::is_same_v<T, server::Score>
             ||  std::is_same_v<T, server::GameOver>
             ||  std::is_same_v<T, server::DeniedBePlayer>
-            ||  std::is_same_v<T, client::BePlayer>;
+            ||  std::is_same_v<T, server::BePlayer>;
 
         case SubState::Room_Player:
             return
@@ -237,6 +245,17 @@ constexpr bool is_packet_expected_in(SubState state, T const& = T{}) {
             ||  std::is_same_v<T, client::Input>
             ||  std::is_same_v<T, client::Abandon>;
 
+        default: 
+            return false;
+    }
+}
+
+constexpr bool is_packet_expected_in(SubState state, client::Any const& any_packet) {
+    return std::visit([state] (auto const& packet) { return is_packet_expected_in(state, packet); }, any_packet);
+}
+
+constexpr bool is_packet_expected_in(SubState state, server::Any const& any_packet) {
+    return std::visit([state] (auto const& packet) { return is_packet_expected_in(state, packet); }, any_packet);
 }
 
 }

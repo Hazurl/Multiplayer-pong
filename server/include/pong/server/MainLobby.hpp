@@ -83,6 +83,9 @@ struct MainLobbyState : public State<MainLobbyState, user_t> {
             static_cast<unsigned>(room_id)
         });
 
+        send(handle, pong::packet::server::CreateRoomResponse{
+            pong::packet::server::CreateRoomResponse::Reason::Okay
+        });
 
         return order_change_state(
             *rooms[room_id],
