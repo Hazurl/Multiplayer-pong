@@ -45,7 +45,7 @@ When a client is connected under a username.
 
 ### New
 
-When a client is waiting for the informations about the lobby.
+When a client is waiting for the information about the lobby.
 
 | Sender | Packet | Next state |
 |--------|--------|------------|
@@ -100,7 +100,7 @@ When a client just joined a room.
 
 ### New
 
-When a client is waiting for the informations about the room.
+When a client is waiting for the information about the room.
 
 | Sender | Packet | Next state |
 |--------|--------|------------|
