@@ -233,7 +233,7 @@ std::string to_string(Input const& packet) {
             "Down"
         :   "Up";
 
-    return std::string{ packet.name } + input_str;
+    return std::string{ packet.name } + "::" + input_str;
 }
 
 
