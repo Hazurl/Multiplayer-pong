@@ -68,7 +68,11 @@ void client_runner(std::mutex& clients_mutex, std::vector<std::unique_ptr<sf::Tc
 
 int main() {
     sf::TcpListener listener;
-    listener.listen(48624);
+    auto status = listener.listen(48624);
+    if (status != sf::Socket::Status::Done) {
+        std::cout << "Listening status error: " << static_cast<int>(status) << '\n';
+        return 1;
+    }
 
     std::mutex clients_mutex;
     std::vector<std::unique_ptr<sf::TcpSocket>> clients;
