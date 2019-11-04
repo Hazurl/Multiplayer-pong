@@ -792,6 +792,13 @@ sf::Packet& operator >> (sf::Packet& p, Any& any_packet) {
             return p;
         }
 
+        case id_of<LeaveRoomResponse>(): {
+            LeaveRoomResponse packet;
+            p >> packet;
+            any_packet = std::move(packet);
+            return p;
+        }
+
         default:
             throw std::runtime_error("Bad packet id\n");
 
