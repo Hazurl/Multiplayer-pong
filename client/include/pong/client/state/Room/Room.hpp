@@ -33,6 +33,7 @@ private:
     void update_left_player(std::string username);
     void update_right_player(std::string username);
     void change_role(room::Game::Role role);
+
     action::Actions on_input(bool up, bool down);
     action::Actions on_button(room::Graphics::Button button);
 
@@ -57,9 +58,24 @@ private:
     action::Actions accepting_be_player_on_send(Application application, pong::packet::client::Any const& game_packet);
     action::Actions accepting_be_player_on_receive(Application application, pong::packet::server::Any const& game_packet);
 
+    using Events = std::variant<
+        pong::packet::server::NewUser,
+        pong::packet::server::OldUser,
+        pong::packet::server::NewPlayer,
+        pong::packet::server::OldPlayer,
+        pong::packet::server::GameOver,
+        pong::packet::server::Score,
+        pong::packet::server::GameState
+    >;
+
+    action::Actions events_on_receive(Application application, Events const& events);
+
     enum class ClientState {
         New, Spectator, Leaving, Player, Queued, NextPlayer, AcceptingBePlayer
     };
+
+    void set_state(ClientState next_state);
+    static packet::SubState get_real_state(ClientState state);
 
     room::Graphics graphics;
     room::Game game;

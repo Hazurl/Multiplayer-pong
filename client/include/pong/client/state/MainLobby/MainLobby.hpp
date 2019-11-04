@@ -40,6 +40,16 @@ private:
     action::Actions creating_room_on_send(Application application, pong::packet::client::Any const& game_packet);
     action::Actions creating_room_on_receive(Application application, pong::packet::server::Any const& game_packet);
 
+    using Events = std::variant<
+        pong::packet::server::NewUser,
+        pong::packet::server::OldUser,
+        pong::packet::server::NewRoom,
+        pong::packet::server::OldRoom,
+        pong::packet::server::RoomInfo
+    >;
+
+    action::Actions events_on_receive(Application application, Events const& events);
+
     enum class ClientState {
         New, Regular, EnteringRom, CreatingRoom
     };
