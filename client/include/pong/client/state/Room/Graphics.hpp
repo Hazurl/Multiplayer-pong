@@ -71,6 +71,7 @@ public:
     void set_left_player(std::string username);
     void set_right_player(std::string username);
 
+
     void unhighlight_left_player();
     void unhighlight_right_player();
     void unhighlight_spectator_count();
