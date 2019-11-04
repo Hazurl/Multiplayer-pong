@@ -179,6 +179,40 @@ void MainLobby::draw(Application app, sf::RenderTarget& target, sf::RenderStates
 
 
 
+template<typename T>
+using require_event_t = std::enable_if_t<std::is_constructible_v<MainLobby::Events, T>, action::Actions>;
+
+template<typename T>
+using require_not_event_t = std::enable_if_t<!std::is_constructible_v<MainLobby::Events, T>, action::Actions>;
+
+action::Actions MainLobby::events_on_receive(Application app, MainLobby::Events const& events) {
+    return std::visit(Visitor{
+        [this, &app] (packet::server::NewUser const& new_user) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::OldUser const& old_user) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::NewRoom const& new_room) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::OldRoom const& old_room) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::RoomInfo const& room_info) {
+            return action::idle();
+        }
+    }, events);
+}
+
+
+
+
+
 
 action::Actions MainLobby::new_on_send(Application application, pong::packet::client::Any const& game_packet) {
     return action::idle();
@@ -216,27 +250,11 @@ action::Actions MainLobby::regular_on_send(Application app, pong::packet::client
 
 action::Actions MainLobby::regular_on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::server::NewUser const& new_user) {
-            return action::idle();
+        [this, &app] (auto const& event) -> require_event_t<decltype(event)> {
+            return events_on_receive(app, event);
         },
 
-        [this, &app] (packet::server::OldUser const& old_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::NewRoom const& new_room) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldRoom const& old_room) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::RoomInfo const& room_info) {
-            return action::idle();
-        },
-
-        [this, &app] (auto const&) {
+        [this, &app] (auto const& non_event) -> require_not_event_t<decltype(non_event)> {
             return action::idle();
         }
     }, game_packet);
@@ -253,26 +271,6 @@ action::Actions MainLobby::entering_room_on_send(Application app, pong::packet::
 
 action::Actions MainLobby::entering_room_on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::server::NewUser const& new_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldUser const& old_user) {
-            return action::idle();
-        },
-        
-        [this, &app] (packet::server::NewRoom const& new_room) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldRoom const& old_room) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::RoomInfo const& room_info) {
-            return action::idle();
-        },
-
         [this, &app] (packet::server::EnterRoomResponse const& response) {
             if (response.result == packet::server::EnterRoomResponse::Result::Okay) {
                 return action::seq(action::change_state<Room>(app, std::move(username)));
@@ -283,7 +281,11 @@ action::Actions MainLobby::entering_room_on_receive(Application app, pong::packe
             return action::idle();
         },
 
-        [this, &app] (auto const&) {
+        [this, &app] (auto const& event) -> require_event_t<decltype(event)> {
+            return events_on_receive(app, event);
+        },
+
+        [this, &app] (auto const& non_event) -> require_not_event_t<decltype(non_event)> {
             return action::idle();
         }
     }, game_packet);
@@ -300,26 +302,6 @@ action::Actions MainLobby::creating_room_on_send(Application app, pong::packet::
 
 action::Actions MainLobby::creating_room_on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::server::NewUser const& new_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldUser const& old_user) {
-            return action::idle();
-        },
-        
-        [this, &app] (packet::server::NewRoom const& new_room) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldRoom const& old_room) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::RoomInfo const& room_info) {
-            return action::idle();
-        },
-
         [this, &app] (packet::server::CreateRoomResponse const& response) {
             if (response.reason == packet::server::CreateRoomResponse::Reason::Okay) {
                 return action::seq(action::change_state<Room>(app, std::move(username)));
@@ -330,7 +312,11 @@ action::Actions MainLobby::creating_room_on_receive(Application app, pong::packe
             return action::idle();
         },
 
-        [this, &app] (auto const&) {
+        [this, &app] (auto const& event) -> require_event_t<decltype(event)> {
+            return events_on_receive(app, event);
+        },
+
+        [this, &app] (auto const& non_event) -> require_not_event_t<decltype(non_event)> {
             return action::idle();
         }
     }, game_packet);
