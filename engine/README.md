@@ -234,6 +234,6 @@ When a client is a player.
 | Server | **`server::OldPlayer`** | |
 | Server | **`server::Score`** | |
 | Server | **`server::GameState`** | |
-| Server | **`server::GameOver`** | [**`Room::Queued`**](#Queued) |
+| Server | **`server::GameOver`** | [**`Room::Spectator`**](#Spectator) if the player gave up, otherwise [**`Room::Queued`**](#Queued) |
 | Client | **`client::Input`** | |
 | Client | **`client::Abandon`** | |
