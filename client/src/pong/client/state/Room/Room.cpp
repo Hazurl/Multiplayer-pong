@@ -84,6 +84,14 @@ action::Actions Room::on_window_event(Application, WindowEvent const& window_eve
                 return on_input(up_pressed, false);
             }
 
+            if (event.code == sf::Keyboard::Space) {
+                return action::seq(action::send(packet::client::AcceptBePlayer{}));
+            }
+
+            if (event.code == sf::Keyboard::Enter) {
+                return action::seq(action::send(packet::client::LeaveRoom{}));
+            }
+
             return action::idle(); 
         },
 
@@ -93,7 +101,45 @@ action::Actions Room::on_window_event(Application, WindowEvent const& window_eve
     }, window_event);
 }
 
-action::Actions Room::on_send(Application, pong::packet::client::Any const& game_packet) {
+action::Actions Room::on_send(Application app, pong::packet::client::Any const& game_packet) {
+    auto const real_client_state = get_real_state(client_state);
+
+    if (!packet::is_packet_expected_in(real_client_state, game_packet)) {
+        ERROR("Sending unexpected packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
+
+    if (packet::is_packet_ignored_in(real_client_state, game_packet)) {
+        WARN("Sending ignored packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
+
+    switch(client_state) {
+        case Room::ClientState::New:
+            return new_on_send(app, game_packet);
+
+        case Room::ClientState::Spectator:
+            return spectator_on_send(app, game_packet);
+
+        case Room::ClientState::Leaving:
+            return leaving_on_send(app, game_packet);
+
+        case Room::ClientState::Player:
+            return player_on_send(app, game_packet);
+
+        case Room::ClientState::Queued:
+            return queued_on_send(app, game_packet);
+
+        case Room::ClientState::NextPlayer:
+            return next_player_on_send(app, game_packet);
+
+        case Room::ClientState::AcceptingBePlayer:
+            return accepting_be_player_on_send(app, game_packet);
+    }
+
+    assert(false && "Unknown ClientState");
+    throw std::runtime_error("Unknown ClientState");
+/*
     return std::visit(Visitor{
         [this] (pong::packet::client::Abandon const&) {
             if (role == room::Game::Role::Left) {
@@ -121,10 +167,51 @@ action::Actions Room::on_send(Application, pong::packet::client::Any const& game
         [] (auto const&) { 
             return action::idle(); 
         }
-    }, game_packet);
+    }, game_packet);*/
 }
 
 action::Actions Room::on_receive(Application app, pong::packet::server::Any const& game_packet) {
+    auto const real_client_state = get_real_state(client_state);
+
+    if (!packet::is_packet_expected_in(real_client_state, game_packet)) {
+        ERROR("Receiving unexpected packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
+
+    if (packet::is_packet_ignored_in(real_client_state, game_packet)) {
+        WARN("Receiving ignored packet ", game_packet, " while in the state ", to_string_view(real_client_state));
+        return action::idle();
+    }
+
+    NOTICE("Received packet ", game_packet, " while in state ", to_string_view(real_client_state));
+
+    switch(client_state) {
+        case Room::ClientState::New:
+            return new_on_receive(app, game_packet);
+
+        case Room::ClientState::Spectator:
+            return spectator_on_receive(app, game_packet);
+
+        case Room::ClientState::Leaving:
+            return leaving_on_receive(app, game_packet);
+
+        case Room::ClientState::Player:
+            return player_on_receive(app, game_packet);
+
+        case Room::ClientState::Queued:
+            return queued_on_receive(app, game_packet);
+
+        case Room::ClientState::NextPlayer:
+            return next_player_on_receive(app, game_packet);
+
+        case Room::ClientState::AcceptingBePlayer:
+            return accepting_be_player_on_receive(app, game_packet);
+    }
+
+    assert(false && "Unknown ClientState");
+    throw std::runtime_error("Unknown ClientState");
+
+/*
     return std::visit(Visitor{
         [this] (pong::packet::server::GameState const& game_state) {
             game.ball = game_state.ball;
@@ -227,7 +314,7 @@ action::Actions Room::on_receive(Application app, pong::packet::server::Any cons
             WARN("Unprocessed packet ", v.name);
             return action::idle(); 
         }
-    }, game_packet);
+    }, game_packet);*/
 }
 
 action::Actions Room::on_update(Application app, float dt) {
@@ -282,9 +369,17 @@ void Room::draw(Application app, sf::RenderTarget& target, sf::RenderStates stat
 }
 
 void Room::add_to_spectator_count(int additional) {
-    NOTICE("Spectators += ", additional);
-    spectator_count += additional;
-    graphics.set_spectator_count(spectator_count);
+    if (additional != 0) {
+        NOTICE("Spectators += ", additional);
+        spectator_count += additional;
+    }
+    int is_spectator = 
+        client_state == Room::ClientState::Spectator
+    ||  client_state == Room::ClientState::AcceptingBePlayer
+    ||  client_state == Room::ClientState::Queued
+    ||  client_state == Room::ClientState::NextPlayer
+    ||  client_state == Room::ClientState::Leaving ? 1 : 0;
+    graphics.set_spectator_count(spectator_count + is_spectator);
 }
 
 void Room::update_left_player(std::string player_username) {
@@ -331,6 +426,26 @@ void Room::change_role(room::Game::Role next_role) {
             break;
         }
     }
+}
+
+packet::SubState Room::get_real_state(ClientState state) {
+    switch(state) {
+        case Room::ClientState::New: return packet::SubState::Room_New;
+        case Room::ClientState::Spectator: return packet::SubState::Room_Spectator;
+        case Room::ClientState::Leaving: return packet::SubState::Room_Leaving;
+        case Room::ClientState::Player: return packet::SubState::Room_Player;
+        case Room::ClientState::Queued: return packet::SubState::Room_Queued;
+        case Room::ClientState::NextPlayer: return packet::SubState::Room_NextPlayer;
+        case Room::ClientState::AcceptingBePlayer: return packet::SubState::Room_AcceptingBePlayer;
+    }
+    assert(false && "Unknown ClientState");
+    throw std::runtime_error("Unknown ClientState");
+}
+
+void Room::set_state(Room::ClientState next_state) {
+    NOTICE("Client State: ", to_string_view(get_real_state(client_state)), " => ", to_string_view(get_real_state(next_state)));
+    client_state = next_state;
+    add_to_spectator_count(0);
 }
 
 action::Actions Room::on_input(bool up, bool down) {
@@ -382,6 +497,93 @@ action::Actions Room::on_button(room::Graphics::Button button) {
 
 
 
+template<typename T>
+using require_event_t = std::enable_if_t<std::is_constructible_v<Room::Events, T>, action::Actions>;
+
+template<typename T>
+using require_not_event_t = std::enable_if_t<!std::is_constructible_v<Room::Events, T>, action::Actions>;
+
+action::Actions Room::events_on_receive(Application app, Room::Events const& events) {
+    return std::visit(Visitor {
+        [this, &app] (packet::server::NewUser const& new_user) {
+            NOTICE("New user in the room: ", new_user.username);
+
+            add_to_spectator_count(1);
+
+            return action::idle(); 
+        },
+
+        [this, &app] (packet::server::OldUser const& old_user) {
+            NOTICE("Old user in the room: ", old_user.username);
+
+            add_to_spectator_count(-1);
+
+            return action::idle(); 
+        },
+
+        [this, &app] (packet::server::NewPlayer const& new_player) {
+            NOTICE("New player in the room: ", new_player.username);
+
+            add_to_spectator_count(-1);
+
+            if (new_player.side == pong::Side::Left) {
+                update_left_player(new_player.username);
+            } else {
+                update_right_player(new_player.username);
+            }
+
+            game = room::Game{};
+            
+            return action::idle(); 
+        },
+
+        [this, &app] (packet::server::OldPlayer const& old_player) {
+            NOTICE("Old player in the room: ", old_player.username);
+
+            add_to_spectator_count(1);
+
+            if (old_player.side == pong::Side::Left) {
+                update_left_player("");
+            } else {
+                update_right_player("");
+            }
+            
+            return action::idle(); 
+        },
+
+        [this, &app] (packet::server::GameState const& game_state) {
+            game.ball = game_state.ball;
+            game.left = game_state.left;
+            game.right = game_state.right;
+
+            return action::idle(); 
+        },
+
+        [this, &app] (packet::server::GameOver const& game_over) {
+            update_left_player("");
+            update_right_player("");
+            return action::idle();
+        },
+
+        [this, &app] (packet::server::Score const& score) {
+            NOTICE("Received ", to_string(score));
+
+            game = room::Game{};
+            left_score = score.left;
+            right_score = score.right;
+
+            graphics.update_score(app, left_score, right_score);
+            
+            return action::idle(); 
+        }
+    }, events);
+}
+
+
+
+
+
+
 action::Actions Room::new_on_send(Application app, pong::packet::client::Any const& game_packet) {
     return std::visit(Visitor {
         [this, &app] (auto const&) {
@@ -393,8 +595,19 @@ action::Actions Room::new_on_send(Application app, pong::packet::client::Any con
 action::Actions Room::new_on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor {
         [this, &app] (packet::server::RoomInfo const& room_info) {
-            client_state = Room::ClientState::Spectator;
-            return action::idle();
+            NOTICE("Received ", room_info);
+
+            add_to_spectator_count(room_info.spectators.size());
+            graphics.highlight_spectator_count();
+            
+            game = room::Game{};
+
+            update_left_player(std::move(room_info.left_player));
+            update_right_player(std::move(room_info.right_player));
+
+            set_state(Room::ClientState::Spectator);
+            
+            return action::idle(); 
         },
 
         [this, &app] (auto const&) {
@@ -407,16 +620,16 @@ action::Actions Room::new_on_receive(Application app, pong::packet::server::Any 
 
 
 
-
 action::Actions Room::spectator_on_send(Application app, pong::packet::client::Any const& game_packet) {
     return std::visit(Visitor {
         [this, &app] (packet::client::EnterQueue const&) {
-            client_state = Room::ClientState::Queued;
+            set_state(Room::ClientState::Queued);
+            change_role(room::Game::Role::Waiting);
             return action::idle();
         },
 
         [this, &app] (packet::client::LeaveRoom const&) {
-            client_state = Room::ClientState::Leaving;
+            set_state(Room::ClientState::Leaving);
             return action::idle();
         },
 
@@ -428,35 +641,11 @@ action::Actions Room::spectator_on_send(Application app, pong::packet::client::A
 
 action::Actions Room::spectator_on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::server::NewUser const& new_user) {
-            return action::idle();
+        [this, &app] (auto const& event) -> require_event_t<decltype(event)> {
+            return events_on_receive(app, event);
         },
 
-        [this, &app] (packet::server::OldUser const& old_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::NewPlayer const& new_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldPlayer const& old_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameState const& game_state) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameOver const& game_over) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::Score const& score) {
-            return action::idle();
-        },
-
-        [this, &app] (auto const&) {
+        [this, &app] (auto const& non_event) -> require_not_event_t<decltype(non_event)> {
             return action::idle();
         }
     }, game_packet);
@@ -477,45 +666,20 @@ action::Actions Room::leaving_on_send(Application app, pong::packet::client::Any
 
 action::Actions Room::leaving_on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::server::NewUser const& new_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldUser const& old_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::NewPlayer const& new_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldPlayer const& old_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameState const& game_state) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameOver const& game_over) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::Score const& score) {
-            return action::idle();
-        },
-
-
         [this, &app] (packet::server::LeaveRoomResponse const& response) {
             if (response.reason == packet::server::LeaveRoomResponse::Reason::Okay) {
                 return action::seq(action::change_state<MainLobby>(app, std::move(username)));
             } else {
-                client_state = Room::ClientState::Spectator;
+                set_state(Room::ClientState::Spectator);
             }
             return action::idle();
         },
 
-        [this, &app] (auto const&) {
+        [this, &app] (auto const& event) -> require_event_t<decltype(event)> {
+            return events_on_receive(app, event);
+        },
+
+        [this, &app] (auto const& non_event) -> require_not_event_t<decltype(non_event)> {
             return action::idle();
         }
     }, game_packet);
@@ -528,6 +692,14 @@ action::Actions Room::leaving_on_receive(Application app, pong::packet::server::
 
 action::Actions Room::player_on_send(Application app, pong::packet::client::Any const& game_packet) {
     return std::visit(Visitor {
+        [this, &app] (packet::client::Abandon const& abandon) {
+            return action::idle();
+        },
+
+        [this, &app] (packet::client::Input const& input) {
+            return action::idle();
+        },
+
         [this, &app] (auto const&) {
             return action::idle();
         }
@@ -536,36 +708,31 @@ action::Actions Room::player_on_send(Application app, pong::packet::client::Any 
 
 action::Actions Room::player_on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::server::NewUser const& new_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldUser const& old_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::NewPlayer const& new_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldPlayer const& old_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameState const& game_state) {
-            return action::idle();
-        },
-
         [this, &app] (packet::server::GameOver const& game_over) {
-            client_state = Room::ClientState::Queued;
-            return action::idle();
+
+            switch(game_over.result) {
+                case packet::server::GameOver::Result::LeftAbandon: NOTICE("Left player gave up!"); break;
+                case packet::server::GameOver::Result::RightAbandon: NOTICE("Right player gave up!"); break;
+                case packet::server::GameOver::Result::LeftWin: NOTICE("Left player won!"); break;
+                case packet::server::GameOver::Result::RightWin: NOTICE("Right player won!"); break;
+            }
+
+            if (role == room::Game::Role::Left && game_over.result == packet::server::GameOver::Result::LeftAbandon
+            ||  role == room::Game::Role::Right && game_over.result == packet::server::GameOver::Result::RightAbandon) {
+                change_role(room::Game::Role::Spec);
+                set_state(Room::ClientState::Spectator);
+            } else {
+                change_role(room::Game::Role::Waiting);
+                set_state(Room::ClientState::Queued);
+            }
+            return events_on_receive(app, game_over);
         },
 
-        [this, &app] (packet::server::Score const& score) {
-            return action::idle();
+        [this, &app] (auto const& event) -> require_event_t<decltype(event)> {
+            return events_on_receive(app, event);
         },
 
-        [this, &app] (auto const&) {
+        [this, &app] (auto const& non_event) -> require_not_event_t<decltype(non_event)> {
             return action::idle();
         }
     }, game_packet);
@@ -578,13 +745,15 @@ action::Actions Room::player_on_receive(Application app, pong::packet::server::A
 
 action::Actions Room::queued_on_send(Application app, pong::packet::client::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::client::EnterQueue const&) {
-            client_state = Room::ClientState::Queued;
+        [this, &app] (packet::client::LeaveQueue const&) {
+            set_state(Room::ClientState::Spectator);
+            change_role(room::Game::Role::Spec);
             return action::idle();
         },
 
         [this, &app] (packet::client::LeaveRoom const&) {
-            client_state = Room::ClientState::Leaving;
+            set_state(Room::ClientState::Leaving);
+            change_role(room::Game::Role::Spec);
             return action::idle();
         },
 
@@ -596,40 +765,16 @@ action::Actions Room::queued_on_send(Application app, pong::packet::client::Any 
 
 action::Actions Room::queued_on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::server::NewUser const& new_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldUser const& old_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::NewPlayer const& new_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldPlayer const& old_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameState const& game_state) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameOver const& game_over) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::Score const& score) {
-            return action::idle();
-        },
-
         [this, &app] (packet::server::BeNextPlayer const& be_next_player) {
-            client_state = Room::ClientState::AcceptingBePlayer;
+            set_state(Room::ClientState::AcceptingBePlayer);
             return action::idle();
         },
 
-        [this, &app] (auto const&) {
+        [this, &app] (auto const& event) -> require_event_t<decltype(event)> {
+            return events_on_receive(app, event);
+        },
+
+        [this, &app] (auto const& non_event) -> require_not_event_t<decltype(non_event)> {
             return action::idle();
         }
     }, game_packet);
@@ -650,45 +795,36 @@ action::Actions Room::next_player_on_send(Application app, pong::packet::client:
 
 action::Actions Room::next_player_on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::server::NewUser const& new_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldUser const& old_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::NewPlayer const& new_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldPlayer const& old_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameState const& game_state) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameOver const& game_over) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::Score const& score) {
-            return action::idle();
-        },
-
         [this, &app] (packet::server::DeniedBePlayer const& denied_be_player) {
-            client_state = Room::ClientState::Spectator;
+            set_state(Room::ClientState::Spectator);
+            change_role(room::Game::Role::Spec);
             return action::idle();
         },
 
         [this, &app] (packet::server::BePlayer const& be_player) {
-            client_state = Room::ClientState::Player;
+            NOTICE("Be player on side: ", (be_player.side == pong::Side::Left ? "left" : "right"));
+
+
+            if (be_player.side == pong::Side::Left) {
+                update_left_player(username);
+                change_role(room::Game::Role::Left);
+            }
+            else {
+                update_right_player(username);
+                change_role(room::Game::Role::Right);
+            }
+
+            game = room::Game{};
+            set_state(Room::ClientState::Player);
+
             return action::idle();
         },
 
-        [this, &app] (auto const&) {
+        [this, &app] (auto const& event) -> require_event_t<decltype(event)> {
+            return events_on_receive(app, event);
+        },
+
+        [this, &app] (auto const& non_event) -> require_not_event_t<decltype(non_event)> {
             return action::idle();
         }
     }, game_packet);
@@ -701,18 +837,20 @@ action::Actions Room::next_player_on_receive(Application app, pong::packet::serv
 
 action::Actions Room::accepting_be_player_on_send(Application app, pong::packet::client::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::client::EnterQueue const&) {
-            client_state = Room::ClientState::Queued;
+        [this, &app] (packet::client::LeaveRoom const& leave_room) {
+            set_state(Room::ClientState::Leaving);
+            change_role(room::Game::Role::Spec);
             return action::idle();
         },
 
-        [this, &app] (packet::client::LeaveRoom const&) {
-            client_state = Room::ClientState::Leaving;
+        [this, &app] (packet::client::LeaveQueue const& leave_queue) {
+            set_state(Room::ClientState::Spectator);
+            change_role(room::Game::Role::Spec);
             return action::idle();
         },
 
-        [this, &app] (packet::client::AcceptBePlayer const&) {
-            client_state = Room::ClientState::NextPlayer;
+        [this, &app] (packet::client::AcceptBePlayer const& accept_be_player) {
+            set_state(Room::ClientState::NextPlayer);
             return action::idle();
         },
 
@@ -724,40 +862,17 @@ action::Actions Room::accepting_be_player_on_send(Application app, pong::packet:
 
 action::Actions Room::accepting_be_player_on_receive(Application app, pong::packet::server::Any const& game_packet) {
     return std::visit(Visitor {
-        [this, &app] (packet::server::NewUser const& new_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldUser const& old_user) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::NewPlayer const& new_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::OldPlayer const& old_player) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameState const& game_state) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::GameOver const& game_over) {
-            return action::idle();
-        },
-
-        [this, &app] (packet::server::Score const& score) {
-            return action::idle();
-        },
-
         [this, &app] (packet::server::DeniedBePlayer const& denied_be_player) {
-            client_state = Room::ClientState::Spectator;
+            set_state(Room::ClientState::Spectator);
+            change_role(room::Game::Role::Spec);
             return action::idle();
         },
 
-        [this, &app] (auto const&) {
+        [this, &app] (auto const& event) -> require_event_t<decltype(event)> {
+            return events_on_receive(app, event);
+        },
+
+        [this, &app] (auto const& non_event) -> require_not_event_t<decltype(non_event)> {
             return action::idle();
         }
     }, game_packet);
