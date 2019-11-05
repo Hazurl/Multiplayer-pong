@@ -23,7 +23,22 @@ Graphics::Graphics(Application app)
             sf::Color{ 0xD6, 0xD6, 0xD3 },
             sf::Color{ 0xFF, 0x99, 0x00 },
         })
+,   people_texture{}
+,   people_spr{ app.gui_allocator(), people_texture }
+,   people_count_txt{ app.gui_allocator(), "0", app.get_font(), 16 }
 {
+
+    if (!people_texture.loadFromFile("../assets/people.png")) {
+        ERROR("Couldn't load '../assets/people.png'");
+        throw std::runtime_error("Couldn't load '../assets/people.png'");
+    }
+
+    people_spr.setTexture(&people_texture, true);
+    {
+        auto s = people_texture.getSize();
+        people_spr.setSize({ static_cast<float>(s.x), static_cast<float>(s.y) });
+    }
+
     //////////////
     // Title
     //////////////
@@ -37,6 +52,40 @@ Graphics::Graphics(Application app)
     app.set_constraint<[] (float top_offset) {
         return 10.f - top_offset;
     }>(title_txt.top(), { title_txt.top_offset() });
+
+
+    //////////////
+    // Spectator count
+    //////////////
+
+    app.set_constraint<[] (float top_offset) {
+        return 10.f - top_offset;
+    }>(people_count_txt.top(), { people_count_txt.top_offset() });
+
+    app.set_constraint<[] (float left_offset) {
+        return 10.f - left_offset;
+    }>(people_count_txt.left(), { people_count_txt.left_offset() });
+
+
+    //////////////
+    // Spectator sprite
+    //////////////
+
+    app.set_constraint<[] (float height, float sc_top, float sc_top_offset, float sc_height) {
+        return sc_top + sc_top_offset + (sc_height - height) / 2.f;
+    }>(people_spr.top(), { people_spr.height(), people_count_txt.top(), people_count_txt.top_offset(), people_count_txt.height() });
+
+    app.set_constraint<[] (float sc_left, float sc_left_offset, float sc_width) {
+        return sc_left + sc_left_offset + sc_width + 10.f;
+    }>(people_spr.left(), { people_count_txt.left(), people_count_txt.left_offset(), people_count_txt.width() });
+
+    app.set_constraint<[] (float sc_height) {
+        return sc_height;
+    }>(people_spr.height(), { people_count_txt.height() });
+
+    app.set_constraint<[] (float height, float ratio) {
+        return height * ratio;
+    }>(people_spr.width(), { people_spr.height(), people_spr.ratio() });
 
 
     //////////////
@@ -137,6 +186,8 @@ void Graphics::free_properties(gui::Allocator<> gui) const {
     quit_button.free_properties(gui);
     create_room_txt.free_properties(gui);
     create_room_button.free_properties(gui);
+    people_count_txt.free_properties(gui);
+    people_spr.free_properties(gui);
 }
 
 
@@ -170,6 +221,11 @@ void Graphics::on_hover(sf::Vector2f const& position) {
 }
 
 
+void Graphics::set_people_count(unsigned people_count) {
+    people_count_txt.setString(std::to_string(people_count));
+}
+
+
 void Graphics::update_animations(Application app, float dt) {
     quit_button.update(dt);
     create_room_button.update(dt);
@@ -182,6 +238,8 @@ void Graphics::notify_gui(gui::Gui<>& gui) const {
     quit_button.notify_gui(gui);
     create_room_txt.notify_gui(gui);
     create_room_button.notify_gui(gui);
+    people_count_txt.notify_gui(gui);
+    people_spr.notify_gui(gui);
 }
 
 void Graphics::update_properties(gui::Gui<> const& gui) {
@@ -191,6 +249,8 @@ void Graphics::update_properties(gui::Gui<> const& gui) {
     quit_button.update_properties(gui);
     create_room_txt.update_properties(gui);
     create_room_button.update_properties(gui);
+    people_count_txt.update_properties(gui);
+    people_spr.update_properties(gui);
 }
 
 void Graphics::draw(sf::RenderTarget& target, sf::RenderStates states) const {
@@ -200,6 +260,8 @@ void Graphics::draw(sf::RenderTarget& target, sf::RenderStates states) const {
     target.draw(quit_txt, states);
     target.draw(create_room_button, states);
     target.draw(create_room_txt, states);
+    target.draw(people_count_txt, states);
+    target.draw(people_spr, states);
 }
 
 }

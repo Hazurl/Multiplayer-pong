@@ -4,7 +4,9 @@
 
 #include <pong/client/gui/Button.hpp>
 #include <pong/client/gui/Text.hpp>
+#include <pong/client/gui/Sprite.hpp>
 #include <pong/client/Application.hpp>
+#include <pong/client/Logger.hpp>
 
 #include <sftk/animated/Animated.hpp>
 
@@ -22,6 +24,9 @@ private:
     gui::Button quit_button;
     gui::Text create_room_txt;
     gui::Button create_room_button;
+    sf::Texture people_texture;
+    gui::Sprite people_spr;
+    gui::Text people_count_txt;
 
 public:
 
@@ -37,6 +42,7 @@ public:
     std::optional<Button> on_release_click(sf::Vector2f const& position);
     void on_hover(sf::Vector2f const& position);
 
+    void set_people_count(unsigned people_count);
 
     void update_animations(Application app, float dt);
 
