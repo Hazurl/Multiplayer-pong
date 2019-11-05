@@ -28,6 +28,8 @@ public:
 
 private:
 
+    void add_to_people_count(int additional_people);
+
     action::Actions new_on_send(Application application, pong::packet::client::Any const& game_packet);
     action::Actions new_on_receive(Application application, pong::packet::server::Any const& game_packet);
 
@@ -59,6 +61,8 @@ private:
     std::string username;
 
     ClientState client_state;
+
+    unsigned int people_count;
 
 };
 

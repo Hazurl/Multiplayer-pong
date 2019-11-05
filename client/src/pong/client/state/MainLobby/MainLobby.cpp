@@ -14,6 +14,7 @@ MainLobby::MainLobby(Application app, std::string _username)
 :   graphics(app)
 ,   username{ std::move(_username) }
 ,   client_state{ MainLobby::ClientState::New }
+,   people_count{ 0 }
 {}
 
 action::Actions MainLobby::on_window_event(Application, WindowEvent const& window_event) {
@@ -179,6 +180,15 @@ void MainLobby::draw(Application app, sf::RenderTarget& target, sf::RenderStates
 
 
 
+void MainLobby::add_to_people_count(int additional_people) {
+    people_count += additional_people;
+    graphics.set_people_count(people_count);
+}
+
+
+
+
+
 template<typename T>
 using require_event_t = std::enable_if_t<std::is_constructible_v<MainLobby::Events, T>, action::Actions>;
 
@@ -188,10 +198,12 @@ using require_not_event_t = std::enable_if_t<!std::is_constructible_v<MainLobby:
 action::Actions MainLobby::events_on_receive(Application app, MainLobby::Events const& events) {
     return std::visit(Visitor{
         [this, &app] (packet::server::NewUser const& new_user) {
+            add_to_people_count(1);
             return action::idle();
         },
 
         [this, &app] (packet::server::OldUser const& old_user) {
+            add_to_people_count(-1);
             return action::idle();
         },
 
@@ -222,6 +234,7 @@ action::Actions MainLobby::new_on_receive(Application application, pong::packet:
 
     if (auto* lobby_info = std::get_if<packet::server::LobbyInfo>(&game_packet)) {
         client_state = MainLobby::ClientState::Regular;
+        add_to_people_count(lobby_info->users.size() + 1 /* me */);
     }
 
     return action::idle();
