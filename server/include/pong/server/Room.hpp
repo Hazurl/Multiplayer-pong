@@ -410,8 +410,6 @@ struct RoomState : public State<RoomState, user_t> {
 
 
         for(user_handle_t h{ 0 }; h < number_of_user(); ++h) {
-            std::cout << "### Check handle #" << h << '\n';
-            std::cout << is_valid(h) << ", " << (get_user_id(h) != left_player) << ", " << (get_user_id(h) != right_player) << ", " << (h != handle) << '\n';
             if (is_valid(h) && get_user_id(h) != left_player && get_user_id(h) != right_player && h != handle) {
                 std::cout << "Push " << get_user_data(h) << '\n';
                 spectators.push_back(get_user_data(h));
@@ -419,7 +417,7 @@ struct RoomState : public State<RoomState, user_t> {
         }
 
 
-        std::cout << "Send RoomInfo\n";
+        std::cout << "Send RoomInfo with " << spectators.size() << " spectators\n";
         auto left_player_handle = get_user_handle(left_player);
         auto right_player_handle = get_user_handle(right_player);
         send(handle, pong::packet::server::RoomInfo{
