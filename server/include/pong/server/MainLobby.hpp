@@ -41,13 +41,13 @@ struct MainLobbyState : public State<MainLobbyState, user_t> {
         return room_ids;
     }
 
-    std::vector<std::string> get_usernames() const {
+    std::vector<std::string> get_all_usernames_except(user_handle_t except_handle) const {
         std::vector<std::string> usernames;
-        usernames.reserve(number_of_user());
+        usernames.reserve(number_of_user() - 1);
 
 
         for(user_handle_t h{ 0 }; h < number_of_user(); ++h) {
-            if (is_valid(h)) {
+            if (is_valid(h) && h != except_handle) {
                 usernames.emplace_back(get_user_data(h));
             }
         }
@@ -123,9 +123,9 @@ struct MainLobbyState : public State<MainLobbyState, user_t> {
     void on_user_enter(user_handle_t handle) {
 
         auto room_ids = get_room_ids();
-        auto usernames = get_usernames();
+        auto usernames = get_all_usernames_except(handle);
 
-        std::cout << "Send LobbyInfo\n";
+        std::cout << "Send LobbyInfo with " << usernames.size() << " people\n";
         send(handle, pong::packet::server::LobbyInfo{
             std::move(usernames), std::move(room_ids)
         });
