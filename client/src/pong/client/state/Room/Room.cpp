@@ -84,11 +84,11 @@ action::Actions Room::on_window_event(Application, WindowEvent const& window_eve
                 return on_input(up_pressed, false);
             }
 
-            if (event.code == sf::Keyboard::Space) {
+            if (event.code == sf::Keyboard::Num1) {
                 return action::seq(action::send(packet::client::AcceptBePlayer{}));
             }
 
-            if (event.code == sf::Keyboard::Enter) {
+            if (event.code == sf::Keyboard::Num2) {
                 return action::seq(action::send(packet::client::LeaveRoom{}));
             }
 
