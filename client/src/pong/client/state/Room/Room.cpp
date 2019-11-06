@@ -467,7 +467,11 @@ action::Actions Room::on_button(room::Graphics::Button button) {
     switch(button) {
         case room::Graphics::Button::Quit: {
             NOTICE("Pressed Quit button");
-            return action::seq(action::quit());
+            if (client_state == Room::ClientState::Spectator) {
+                set_state(Room::ClientState::Leaving);
+                return action::seq(action::send(packet::client::LeaveRoom{}));
+            }
+            return action::idle();
         }
 
         case room::Graphics::Button::Abandon: {
@@ -670,6 +674,7 @@ action::Actions Room::leaving_on_receive(Application app, pong::packet::server::
             if (response.reason == packet::server::LeaveRoomResponse::Reason::Okay) {
                 return action::seq(action::change_state<MainLobby>(app, std::move(username)));
             } else {
+                NOTICE("Couldn't leave the room");
                 set_state(Room::ClientState::Spectator);
             }
             return action::idle();
