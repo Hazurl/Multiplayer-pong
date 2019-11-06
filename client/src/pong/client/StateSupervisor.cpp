@@ -29,8 +29,28 @@ void StateSupervisor::loop() {
             }
         }
 
-        process_events(clock.restart().asSeconds());
+        auto dt = clock.restart().asSeconds();
+        process_events(dt);
         update_gui();
+
+        {
+            height.update(dt);
+
+            auto const notification_x = notification.getPosition().x;
+            auto const notification_size = notification.getSize();
+            auto const text_bounds = notification_text.getLocalBounds();
+            auto const window_height = window.getSize().y;
+            auto const new_notication_position = sf::Vector2f{ notification_x, window_height - height };
+            auto const new_text_position = sf::Vector2f{
+                new_notication_position.x + (notification_size.x - text_bounds.width) / 2.f - text_bounds.left,
+                new_notication_position.y + (notification_size.y - text_bounds.height) / 2.f - text_bounds.top,
+            };
+
+            notification.setPosition(new_notication_position);
+            notification_text.setPosition(new_text_position);
+
+        }
+
         draw();
 
     }
@@ -80,6 +100,15 @@ std::vector<WindowEvent> StateSupervisor::poll_window_events() {
                 break;
             }
             case sf::Event::KeyPressed: {
+                static bool is_up = false;
+                if (event.key.code == sf::Keyboard::N) {
+                    if (is_up) {
+                        height.animate(0, 0.5f);
+                    } else {
+                        height.animate(notification_max_height, 0.5f);
+                    }
+                    is_up = !is_up;
+                }
                 window_events.emplace_back(KeyPressed{ event.key });
                 break;
             }
@@ -227,6 +256,8 @@ void StateSupervisor::draw() {
     window.clear(sf::Color{ 0x3A, 0x3C, 0x46 });
 
     state->draw(make_application(), window, {});
+    window.draw(notification);
+    window.draw(notification_text);
 
     window.display();
 }

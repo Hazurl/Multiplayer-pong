@@ -19,12 +19,18 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
 
+#include <sftk/animated/Animated.hpp>
+
 #include <memory>
 #include <vector>
 
 namespace pong::client {
 
 class StateSupervisor {
+
+    static constexpr float notification_padding = 20;
+    static constexpr float notification_bounds_height = 30;
+    static constexpr float notification_max_height = notification_padding + notification_bounds_height;
 public:
 
     template<typename S>
@@ -39,6 +45,8 @@ public:
     ,   window_properties(gui)
     ,   font{}
     ,   state{ nullptr }
+    ,   notification_text("Couldn't connect to the server", font, 16)
+    ,   height(sftk::interpolation::Bezier(notification_max_height, notification_max_height), 0)
     {
         auto window_size = window.getSize();
         gui.set_property(window_properties.left(), 0);
@@ -50,6 +58,12 @@ public:
 
         auto app = make_application();
         state = std::make_unique<InitialState>(app, std::forward<Args>(args)...);
+
+        notification.setSize({ notification_text.getLocalBounds().width + notification_padding, notification_bounds_height });
+        notification.setFillColor(sf::Color{ 0xBC, 0x31, 0x31, 0xB0 });
+        notification.setPosition(window_size.x - notification.getSize().x - notification_padding, window_size.y - height);
+
+        notification_text.setFillColor(sf::Color{ 0xFF, 0xFF, 0xFF, 0xB0 });
     }
 
     void loop();
@@ -83,6 +97,10 @@ private:
     sf::Font font;
 
     std::unique_ptr<state::State> state;
+
+    sf::RectangleShape notification;
+    sf::Text notification_text;
+    sftk::Animated<float, sftk::interpolation::Bezier<float>> height;
 
 };
 
