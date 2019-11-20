@@ -9,6 +9,7 @@
 #include <pong/client/Action.hpp>
 #include <pong/client/Logger.hpp>
 #include <pong/client/WindowEvent.hpp>
+#include <pong/client/Notification.hpp>
 
 #include <pong/client/state/State.hpp>
 
@@ -93,6 +94,8 @@ private:
 
     gui::Gui<> gui;
     gui::RectProperties window_properties;
+
+    notif::Queue notification_queue;
 
     sf::Font font;
 

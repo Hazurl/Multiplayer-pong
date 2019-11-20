@@ -59,6 +59,21 @@ action::Actions Login::on_window_event(Application app, WindowEvent const& windo
                 graphics.cursor_right();
             }
 
+            else if (event.code == sf::Keyboard::N) {
+                NOTICE("Send notification");
+                return action::seq(action::notification_simple("Is this working ?"));
+            }
+
+            else if (event.code == sf::Keyboard::B) {
+                NOTICE("Send notification");
+                return action::seq(action::notification_with_button("Is this working ?", "accept").closing_after(5));
+            }
+
+            else if (event.code == sf::Keyboard::V) {
+                NOTICE("Send notification");
+                return action::seq(action::notification_with_refresh("Is this working ?").closing_after(5));
+            }
+
             else if (event.code == sf::Keyboard::Enter) {
                 if (auto valid_username = graphics.validate_username()) {
                     username = std::move(valid_username);

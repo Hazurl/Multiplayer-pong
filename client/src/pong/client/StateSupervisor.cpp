@@ -117,14 +117,33 @@ std::vector<WindowEvent> StateSupervisor::poll_window_events() {
                 break;
             }
             case sf::Event::MouseButtonPressed: {
+                if (event.mouseButton.button == sf::Mouse::Button::Left) {
+                    sf::Vector2f mouse{
+                        static_cast<float>(event.mouseButton.x),
+                        static_cast<float>(event.mouseButton.y)
+                    };
+                    notification_queue.on_click(mouse);
+                }
                 window_events.emplace_back(MouseButtonPressed{ event.mouseButton });
                 break;
             }
             case sf::Event::MouseButtonReleased: {
+                if (event.mouseButton.button == sf::Mouse::Button::Left) {
+                    sf::Vector2f mouse{
+                        static_cast<float>(event.mouseButton.x),
+                        static_cast<float>(event.mouseButton.y)
+                    };
+                    notification_queue.on_release_click(mouse);
+                }
                 window_events.emplace_back(MouseButtonReleased{ event.mouseButton });
                 break;
             }
             case sf::Event::MouseMoved: {
+                sf::Vector2f mouse{
+                    static_cast<float>(event.mouseMove.x),
+                    static_cast<float>(event.mouseMove.y)
+                };
+                notification_queue.on_hover(mouse);
                 window_events.emplace_back(MouseMoved{ event.mouseMove });
                 break;
             }
@@ -210,6 +229,8 @@ void StateSupervisor::process_events(float dt) {
     }
 
     process_actions(state->on_update(app, dt));
+
+    notification_queue.update_animations(make_application(), dt);
 }
 
 void StateSupervisor::process_actions(action::Actions actions) {
@@ -235,12 +256,16 @@ void StateSupervisor::process_action(action::Action action) {
         },
         [this] (action::Disconnect const&) {
             connection.stop_connection();
+        },
+        [this] (notif::Notification const& n) {
+            notification_queue.push(make_application(), n);
         }
     }, std::move(action));
 }
 
 void StateSupervisor::update_gui() {
     state->notify_gui(gui);
+    notification_queue.notify_gui(gui);
 
     if (!gui.is_up_to_date() && !gui.compute_order()) {
         ERROR("Circular dependencies in the GUI");
@@ -250,14 +275,17 @@ void StateSupervisor::update_gui() {
     gui.update_properties();
 
     state->update_properties(gui);
+
+    notification_queue.update_properties(gui);
 }
 
 void StateSupervisor::draw() {
     window.clear(sf::Color{ 0x3A, 0x3C, 0x46 });
 
     state->draw(make_application(), window, {});
-    window.draw(notification);
-    window.draw(notification_text);
+    notification_queue.draw(window);
+    //window.draw(notification);
+    //window.draw(notification_text);
 
     window.display();
 }

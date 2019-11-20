@@ -6,6 +6,8 @@
 
 #include <pong/packet/Client.hpp>
 
+#include <pong/client/Notification.hpp>
+
 namespace pong::client::state {
 
 class State;
@@ -33,7 +35,8 @@ using Action = std::variant<
     Quit,
     Send,
     Connect,
-    Disconnect
+    Disconnect,
+    notif::Notification
 >;
 
 using Actions = std::vector<Action>;
@@ -61,6 +64,52 @@ inline Action connect(sf::IpAddress addr, unsigned short port, sf::Time timeout 
     return Connect {
         std::move(addr), std::move(port), std::move(timeout)
     };
+}
+
+inline notif::Notification notification_simple(sf::String message, float close_after = 5.f) {
+    return notif::Notification {
+        std::move(message),
+        notif::Notification::Category::Gameplay,
+        notif::Lifetime{
+            close_after,
+            true
+        },
+        notif::NoButton{}
+    };
+}
+
+inline notif::Notification notification_blank(sf::String message) {
+    return notif::Notification {
+        std::move(message),
+        notif::Notification::Category::Gameplay,
+        notif::Lifetime{
+            {},
+            false
+        },
+        notif::NoButton{}
+    };
+}
+
+inline notif::Notification notification_with_refresh(sf::String message) {
+    return notif::Notification {
+        std::move(message),
+        notif::Notification::Category::Gameplay,
+        notif::Lifetime{
+            std::nullopt,
+            false
+        },
+        notif::RefreshButton{}
+    };
+}
+
+inline notif::Notification notification_with_button(sf::String message, sf::String button_message, notif::Lifetime lifetime = { std::nullopt, false }) {
+    return notif::Notification {
+        std::move(message),
+        notif::Notification::Category::Gameplay,
+        std::move(lifetime),
+        notif::GenericButton{ std::move(button_message) }
+    };
+
 }
 
 inline Actions idle() {
